@@ -38,8 +38,17 @@ try {
     // Format response
     $formattedWithdrawals = [];
     foreach ($withdrawals as $withdrawal) {
+        // Load goal if exists
+        $goalName = null;
+        if ($withdrawal->goal_id) {
+            $goal = \App\Models\Goal::find($withdrawal->goal_id);
+            $goalName = $goal ? $goal->name : null;
+        }
+        
         $formattedWithdrawals[] = [
             'id' => $withdrawal->id,
+            'goal_id' => $withdrawal->goal_id,
+            'goal_name' => $goalName,
             'amount' => (float) $withdrawal->amount,
             'method' => $withdrawal->method,
             'account_number' => $withdrawal->account_number,

@@ -18,6 +18,7 @@ class Withdrawal extends Model {
     
     protected $fillable = [
         'user_id',
+        'goal_id',
         'amount',
         'method',
         'account_number',
@@ -38,6 +39,10 @@ class Withdrawal extends Model {
     // Relationships
     public function user() {
         return $this->belongsTo(User::class);
+    }
+    
+    public function goal() {
+        return $this->belongsTo(Goal::class);
     }
     
     // Check if status is pending
@@ -83,40 +88,59 @@ class Withdrawal extends Model {
         $processedCount = 0;
 
         foreach ($withdrawals as $withdrawal) {
-            $uid = $withdrawal->user_id; // Use ID from record
+            $uid = $withdrawal->user_id;
             
-            // Logic to approve and deduct balance
             try {
-                // Get user goals to deduct balance
-                $totalBalance = Goal::where('user_id', $uid)->sum('current_amount');
-                
-                if ($totalBalance >= $withdrawal->amount) {
-                    $amountToDeduct = $withdrawal->amount;
-                    $goals = Goal::where('user_id', $uid)
-                                 ->where('current_amount', '>', 0)
-                                 ->orderBy('current_amount', 'desc')
-                                 ->get();
+                // NEW LOGIC: Deduct from SPECIFIC GOAL if goal_id is set
+                if ($withdrawal->goal_id) {
+                    $goal = Goal::find($withdrawal->goal_id);
                     
-                    foreach ($goals as $goal) {
-                        if ($amountToDeduct <= 0) break;
+                    if ($goal && $goal->current_amount >= $withdrawal->amount) {
+                        // Deduct from this specific goal
+                        $goal->subtractAmount($withdrawal->amount);
                         
-                        $deductFromThisGoal = min($goal->current_amount, $amountToDeduct);
-                        $goal->subtractAmount($deductFromThisGoal);
-                        $amountToDeduct -= $deductFromThisGoal;
+                        // Approve
+                        $withdrawal->approve('Auto-approved by system');
+                        
+                        // Create Notification with goal name
+                        \App\Models\Notification::createNotification(
+                            $uid,
+                            'Penarikan Berhasil',
+                            'Penarikan Rp ' . number_format($withdrawal->amount, 0, ',', '.') . ' dari "' . $goal->name . '" berhasil diproses.',
+                            'withdrawal'
+                        );
+                        
+                        $processedCount++;
                     }
+                } else {
+                    // LEGACY: Deduct from multiple goals (for old data without goal_id)
+                    $totalBalance = Goal::where('user_id', $uid)->sum('current_amount');
                     
-                    // Approve
-                    $withdrawal->approve('Auto-approved by system');
-                    
-                    // Create Notification
-                    \App\Models\Notification::createNotification(
-                        $uid,
-                        'Penarikan Berhasil',
-                        'Penarikan dana sebesar Rp ' . number_format($withdrawal->amount, 0, ',', '.') . ' berhasil diproses.',
-                        'withdrawal'
-                    );
-                    
-                    $processedCount++;
+                    if ($totalBalance >= $withdrawal->amount) {
+                        $amountToDeduct = $withdrawal->amount;
+                        $goals = Goal::where('user_id', $uid)
+                                     ->where('current_amount', '>', 0)
+                                     ->orderBy('current_amount', 'desc')
+                                     ->get();
+                        
+                        foreach ($goals as $goal) {
+                            if ($amountToDeduct <= 0) break;
+                            $deductFromThisGoal = min($goal->current_amount, $amountToDeduct);
+                            $goal->subtractAmount($deductFromThisGoal);
+                            $amountToDeduct -= $deductFromThisGoal;
+                        }
+                        
+                        $withdrawal->approve('Auto-approved by system');
+                        
+                        \App\Models\Notification::createNotification(
+                            $uid,
+                            'Penarikan Berhasil',
+                            'Penarikan Rp ' . number_format($withdrawal->amount, 0, ',', '.') . ' berhasil diproses.',
+                            'withdrawal'
+                        );
+                        
+                        $processedCount++;
+                    }
                 }
             } catch (\Exception $e) {
                 error_log("Auto-Approval Error: " . $e->getMessage());

@@ -1,6 +1,6 @@
 <?php
 // api/withdrawals/request.php
-// POST /api/withdrawals/request - User minta penarikan
+// POST /api/withdrawals/request - User request penarikan dari goal spesifik
 
 require_once __DIR__ . '/../../bootstrap.php';
 require_once __DIR__ . '/../../config/cors.php';
@@ -17,9 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $userId = Auth::authenticate();
 $data = Response::getJsonInput();
 
-// Validate input
-Response::validateRequiredFields($data, ['amount', 'method']);
+// Validate input - goal_id sekarang WAJIB
+Response::validateRequiredFields($data, ['goal_id', 'amount', 'method']);
 
+$goalId = (int) $data['goal_id'];
 $amount = (float) $data['amount'];
 $method = strtolower(trim($data['method']));
 $accountNumber = isset($data['account_number']) ? trim($data['account_number']) : null;
@@ -36,17 +37,27 @@ if (!Withdrawal::isValidMethod($method)) {
 }
 
 try {
-    // Calculate user's total balance from all goals
-    $totalBalance = Goal::where('user_id', $userId)->sum('current_amount');
+    // Validate goal exists and belongs to user
+    $goal = Goal::where('id', $goalId)
+                ->where('user_id', $userId)
+                ->first();
     
-    // Validate sufficient balance
-    if ($totalBalance < $amount) {
-        Response::error('Insufficient balance. Your total savings: Rp ' . number_format($totalBalance, 2), 400);
+    if (!$goal) {
+        Response::error('Goal not found or does not belong to you', 404);
     }
     
-    // Create withdrawal request
+    // Validate sufficient balance in THIS SPECIFIC GOAL
+    if ($goal->current_amount < $amount) {
+        Response::error(
+            'Insufficient balance in "' . $goal->name . '". Available: Rp ' . number_format($goal->current_amount, 0, ',', '.'),
+            400
+        );
+    }
+    
+    // Create withdrawal request with goal_id
     $withdrawal = Withdrawal::create([
         'user_id' => $userId,
+        'goal_id' => $goalId,
         'amount' => $amount,
         'method' => $method,
         'account_number' => $accountNumber,
@@ -56,12 +67,14 @@ try {
     
     Response::success('Withdrawal request submitted successfully', [
         'id' => $withdrawal->id,
+        'goal_id' => $withdrawal->goal_id,
+        'goal_name' => $goal->name,
         'amount' => (float) $withdrawal->amount,
         'method' => $withdrawal->method,
         'account_number' => $withdrawal->account_number,
         'status' => $withdrawal->status,
         'notes' => $withdrawal->notes,
-        'total_balance' => (float) $totalBalance,
+        'goal_balance' => (float) $goal->current_amount,
         'created_at' => $withdrawal->created_at->toDateTimeString()
     ], 201);
     

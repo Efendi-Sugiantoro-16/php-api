@@ -446,11 +446,13 @@ Future<void> deleteTransaction(int id) async {
 
 ## 7. Withdrawal Endpoints
 
-### Request Withdrawal
+### Request Withdrawal (Goal-Specific)
 ```dart
 // POST /withdrawals/request
 // Requires: Authorization header
+// UPDATED: Now requires goal_id to specify which goal to withdraw from
 Future<Map<String, dynamic>> requestWithdrawal({
+  required int goalId,    // WAJIB: ID goal yang ingin ditarik
   required double amount,
   required String method,
   String? accountNumber,
@@ -458,8 +460,9 @@ Future<Map<String, dynamic>> requestWithdrawal({
 }) async {
   try {
     final response = await ApiClient.instance.post('/withdrawals/request', data: {
+      'goal_id': goalId,
       'amount': amount,
-      'method': method, // 'dana', 'gopay', 'bank_transfer', etc.
+      'method': method, // 'dana', 'gopay', 'bank_transfer', 'ovo', 'shopeepay'
       if (accountNumber != null) 'account_number': accountNumber,
       if (notes != null) 'notes': notes,
     });
@@ -477,12 +480,33 @@ Future<Map<String, dynamic>> requestWithdrawal({
 **Request Body:**
 ```json
 {
+  "goal_id": 1,
   "amount": 100000,
   "method": "dana",
   "account_number": "08123456789",
-  "notes": "Penarikan butuh cepat"
+  "notes": "Penarikan untuk keperluan darurat"
 }
 ```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "message": "Withdrawal request submitted successfully",
+  "data": {
+    "id": 5,
+    "goal_id": 1,
+    "goal_name": "Laptop",
+    "amount": 100000,
+    "method": "dana",
+    "status": "pending",
+    "goal_balance": 400000,
+    "created_at": "2024-01-19 01:00:00"
+  }
+}
+```
+
+> **Note:** Jumlah penarikan tidak boleh melebihi saldo goal yang dipilih.
 
 ---
 
@@ -655,36 +679,43 @@ Future<void> setupPushNotifications(int userId) async {
   if (settings.authorizationStatus == AuthorizationStatus.authorized) {
     print('✅ User granted permission');
     
-    // 2. Subscribe to specific topic
-    // Backend mengirim ke: "user_{id}"
+    // 2. Subscribe to Topic
     String topic = 'user_$userId';
     await fcm.subscribeToTopic(topic);
     print("✅ Subscribed to topic: $topic");
 
-    // 3. Handle Foreground Messages (Saat aplikasi sedang dibuka)
+    // 3. Handle Foreground Messages (Saat app dibuka)
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('🚀 Got a message whilst in the foreground!');
-      
       if (message.notification != null) {
-        // Tampilkan Snackbar/Dialog agar user sadar ada notif masuk
         Get.snackbar(
           message.notification!.title ?? 'Notifikasi Baru',
           message.notification!.body ?? '',
           backgroundColor: Colors.white,
-          colorText: Colors.black,
-          icon: Icon(Icons.notifications_active, color: Colors.blue),
-          duration: Duration(seconds: 4),
-          snackPosition: SnackPosition.TOP,
-          onTap: (_) {
-            // Arahkan ke halaman notifikasi jika diklik
-            // Get.to(() => NotificationScreen());
-          }
+          onTap: (_) => Get.to(() => const NotificationScreen()),
+          duration: const Duration(seconds: 4),
         );
       }
     });
 
+    // 4. Handle Background Notification Click (Saat app di background & notif diklik)
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print('🚀 Notification clicked from background!');
+      Get.to(() => const NotificationScreen());
+    });
+
+    // 5. Handle Terminated State (Saat app mati total & dibuka dari notif)
+    fcm.getInitialMessage().then((RemoteMessage? message) {
+      if (message != null) {
+        print('🚀 App opened from terminated state by notification!');
+        // Delay sedikit agar GetX siap
+        Future.delayed(const Duration(seconds: 1), () {
+          Get.to(() => const NotificationScreen());
+        });
+      }
+    });
+
   } else {
-    print('❌ User declined or has not accepted permission');
+    print('❌ User declined permission');
   }
 }
 ```
