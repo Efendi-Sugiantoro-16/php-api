@@ -35,6 +35,11 @@ if ($uri === '/' || $uri === '/index.php') {
                 'GET /api/transactions/index?goal_id={id}' => 'Get transactions by goal (requires auth)',
                 'POST /api/transactions/store' => 'Create new transaction (requires auth)',
                 'DELETE /api/transactions/delete' => 'Delete transaction (requires auth)'
+            ],
+            'withdrawals' => [
+                'POST /api/withdrawals/request' => 'Request withdrawal (requires auth)',
+                'GET /api/withdrawals/index' => 'Get withdrawal history (requires auth)',
+                'POST /api/withdrawals/approve' => 'Approve/reject withdrawal (admin)'
             ]
         ],
         'authentication' => [

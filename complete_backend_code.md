@@ -77,6 +77,23 @@ CREATE INDEX idx_goals_user_id ON goals(user_id);
 CREATE INDEX idx_transactions_goal_id ON transactions(goal_id);
 CREATE INDEX idx_tokens_token ON tokens(token);
 CREATE INDEX idx_tokens_user_id ON tokens(user_id);
+
+-- Tabel Withdrawals (Penarikan)
+CREATE TABLE withdrawals (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    method VARCHAR(50),          -- 'dana', 'gopay', 'bank_transfer', 'ovo', 'shopeepay'
+    account_number VARCHAR(50),
+    status VARCHAR(20) DEFAULT 'pending',  -- pending, approved, rejected
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_withdrawals_user_id ON withdrawals(user_id);
+CREATE INDEX idx_withdrawals_status ON withdrawals(status);
 ```
 
 ---
@@ -246,11 +263,16 @@ $response = [
             'PUT /api/goals/update' => 'Update goal (requires auth)',
             'DELETE /api/goals/delete' => 'Delete goal (requires auth)'
         ],
-        'transactions' => [
-            'GET /api/transactions/index?goal_id={id}' => 'Get transactions by goal (requires auth)',
-            'POST /api/transactions/store' => 'Create new transaction (requires auth)',
-            'DELETE /api/transactions/delete' => 'Delete transaction (requires auth)'
-        ]
+            'transactions' => [
+                'GET /api/transactions/index?goal_id={id}' => 'Get transactions by goal (requires auth)',
+                'POST /api/transactions/store' => 'Create new transaction (requires auth)',
+                'DELETE /api/transactions/delete' => 'Delete transaction (requires auth)'
+            ],
+            'withdrawals' => [
+                'POST /api/withdrawals/request' => 'Request withdrawal (requires auth)',
+                'GET /api/withdrawals/index' => 'Get withdrawal history (requires auth)',
+                'POST /api/withdrawals/approve' => 'Approve/reject withdrawal (admin)'
+            ]
     ],
     'authentication' => [
         'type' => 'Bearer Token',
@@ -395,6 +417,7 @@ class Transaction extends Model {
     protected $fillable = [
         'goal_id',
         'amount',
+        'method',
         'description',
         'transaction_date'
     ];
@@ -504,9 +527,81 @@ class Token extends Model {
 ?>
 ```
 
----
+### File: `app/models/Withdrawal.php`
 
-## Helpers
+```php
+<?php
+// app/Models/Withdrawal.php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Withdrawal extends Model {
+    protected $table = 'withdrawals';
+    
+    // Status constants
+    const STATUS_PENDING = 'pending';
+    const STATUS_APPROVED = 'approved';
+    const STATUS_REJECTED = 'rejected';
+    
+    // Valid methods
+    const VALID_METHODS = ['dana', 'gopay', 'bank_transfer', 'ovo', 'shopeepay'];
+    
+    protected $fillable = [
+        'user_id',
+        'amount',
+        'method',
+        'account_number',
+        'status',
+        'notes'
+    ];
+    
+    protected $casts = [
+        'amount' => 'decimal:2',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
+    ];
+    
+    public $timestamps = true;
+    const CREATED_AT = 'created_at';
+    const UPDATED_AT = 'updated_at';
+    
+    // Relationships
+    public function user() {
+        return $this->belongsTo(User::class);
+    }
+    
+    // Check if status is pending
+    public function isPending() {
+        return $this->status === self::STATUS_PENDING;
+    }
+    
+    // Approve withdrawal
+    public function approve($notes = null) {
+        $this->status = self::STATUS_APPROVED;
+        if ($notes) {
+            $this->notes = $notes;
+        }
+        $this->save();
+    }
+    
+    // Reject withdrawal
+    public function reject($notes = null) {
+        $this->status = self::STATUS_REJECTED;
+        if ($notes) {
+            $this->notes = $notes;
+        }
+        $this->save();
+    }
+    
+    // Validate method
+    public static function isValidMethod($method) {
+        return in_array($method, self::VALID_METHODS);
+    }
+}
+?>
+
 
 ### File: `app/helpers/response.php`
 
@@ -1154,6 +1249,261 @@ try {
     
 } catch (Exception $e) {
     Response::error('Failed to delete transaction: ' . $e->getMessage(), 500);
+}
+?>
+```
+
+---
+
+---
+
+## API Endpoints - Withdrawals
+
+### File: `api/withdrawals/request.php`
+
+```php
+<?php
+// api/withdrawals/request.php
+// POST /api/withdrawals/request - User minta penarikan
+
+require_once __DIR__ . '/../../bootstrap.php';
+require_once __DIR__ . '/../../config/cors.php';
+
+use App\Models\Goal;
+use App\Models\Withdrawal;
+use App\Middleware\Auth;
+use App\Helpers\Response;
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    Response::error('Method not allowed', 405);
+}
+
+$userId = Auth::authenticate();
+$data = Response::getJsonInput();
+
+// Validate input
+Response::validateRequiredFields($data, ['amount', 'method']);
+
+$amount = (float) $data['amount'];
+$method = strtolower(trim($data['method']));
+$accountNumber = isset($data['account_number']) ? trim($data['account_number']) : null;
+$notes = isset($data['notes']) ? trim($data['notes']) : null;
+
+// Validate amount
+if ($amount <= 0) {
+    Response::error('Amount must be greater than 0', 400);
+}
+
+// Validate method
+if (!Withdrawal::isValidMethod($method)) {
+    Response::error('Invalid method. Valid methods are: ' . implode(', ', Withdrawal::VALID_METHODS), 400);
+}
+
+try {
+    // Calculate user's total balance from all goals
+    $totalBalance = Goal::where('user_id', $userId)->sum('current_amount');
+    
+    // Validate sufficient balance
+    if ($totalBalance < $amount) {
+        Response::error('Insufficient balance. Your total savings: Rp ' . number_format($totalBalance, 2), 400);
+    }
+    
+    // Create withdrawal request
+    $withdrawal = Withdrawal::create([
+        'user_id' => $userId,
+        'amount' => $amount,
+        'method' => $method,
+        'account_number' => $accountNumber,
+        'status' => Withdrawal::STATUS_PENDING,
+        'notes' => $notes
+    ]);
+    
+    Response::success('Withdrawal request submitted successfully', [
+        'id' => $withdrawal->id,
+        'amount' => (float) $withdrawal->amount,
+        'method' => $withdrawal->method,
+        'account_number' => $withdrawal->account_number,
+        'status' => $withdrawal->status,
+        'notes' => $withdrawal->notes,
+        'total_balance' => (float) $totalBalance,
+        'created_at' => $withdrawal->created_at->toDateTimeString()
+    ], 201);
+    
+} catch (Exception $e) {
+    Response::error('Failed to create withdrawal request: ' . $e->getMessage(), 500);
+}
+?>
+```
+
+### File: `api/withdrawals/index.php`
+
+```php
+<?php
+// api/withdrawals/index.php
+// GET /api/withdrawals/index - Lihat history withdrawal
+
+require_once __DIR__ . '/../../bootstrap.php';
+require_once __DIR__ . '/../../config/cors.php';
+
+use App\Models\Withdrawal;
+use App\Middleware\Auth;
+use App\Helpers\Response;
+
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    Response::error('Method not allowed', 405);
+}
+
+$userId = Auth::authenticate();
+
+try {
+    // Build query
+    $query = Withdrawal::where('user_id', $userId);
+    
+    // Filter by status if provided
+    if (isset($_GET['status']) && !empty($_GET['status'])) {
+        $status = strtolower(trim($_GET['status']));
+        $validStatuses = ['pending', 'approved', 'rejected'];
+        
+        if (in_array($status, $validStatuses)) {
+            $query->where('status', $status);
+        }
+    }
+    
+    // Get withdrawals ordered by created_at desc
+    $withdrawals = $query->orderBy('created_at', 'desc')->get();
+    
+    // Format response
+    $formattedWithdrawals = [];
+    foreach ($withdrawals as $withdrawal) {
+        $formattedWithdrawals[] = [
+            'id' => $withdrawal->id,
+            'amount' => (float) $withdrawal->amount,
+            'method' => $withdrawal->method,
+            'account_number' => $withdrawal->account_number,
+            'status' => $withdrawal->status,
+            'notes' => $withdrawal->notes,
+            'created_at' => $withdrawal->created_at->toDateTimeString(),
+            'updated_at' => $withdrawal->updated_at ? $withdrawal->updated_at->toDateTimeString() : null
+        ];
+    }
+    
+    // Calculate summary
+    $summary = [
+        'total_requests' => count($formattedWithdrawals),
+        'pending_count' => Withdrawal::where('user_id', $userId)->where('status', 'pending')->count(),
+        'approved_count' => Withdrawal::where('user_id', $userId)->where('status', 'approved')->count(),
+        'rejected_count' => Withdrawal::where('user_id', $userId)->where('status', 'rejected')->count()
+    ];
+    
+    Response::success('Withdrawals retrieved successfully', [
+        'summary' => $summary,
+        'withdrawals' => $formattedWithdrawals
+    ]);
+    
+} catch (Exception $e) {
+    Response::error('Failed to retrieve withdrawals: ' . $e->getMessage(), 500);
+}
+?>
+```
+
+### File: `api/withdrawals/approve.php`
+
+```php
+<?php
+// api/withdrawals/approve.php
+// POST /api/withdrawals/approve - Admin approve/reject withdrawal (Dummy - no role check)
+
+require_once __DIR__ . '/../../bootstrap.php';
+require_once __DIR__ . '/../../config/cors.php';
+
+use App\Models\Goal;
+use App\Models\Withdrawal;
+use App\Middleware\Auth;
+use App\Helpers\Response;
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    Response::error('Method not allowed', 405);
+}
+
+// Note: In production, add admin role check here
+$userId = Auth::authenticate();
+$data = Response::getJsonInput();
+
+// Validate input
+Response::validateRequiredFields($data, ['withdrawal_id']);
+
+$withdrawalId = (int) $data['withdrawal_id'];
+$action = isset($data['action']) ? strtolower(trim($data['action'])) : 'approve';
+$notes = isset($data['notes']) ? trim($data['notes']) : null;
+
+// Validate action
+if (!in_array($action, ['approve', 'reject'])) {
+    Response::error('Invalid action. Valid actions are: approve, reject', 400);
+}
+
+try {
+    // Find withdrawal
+    $withdrawal = Withdrawal::find($withdrawalId);
+    
+    if (!$withdrawal) {
+        Response::error('Withdrawal not found', 404);
+    }
+    
+    // Check if already processed
+    if (!$withdrawal->isPending()) {
+        Response::error('Withdrawal has already been processed. Current status: ' . $withdrawal->status, 400);
+    }
+    
+    if ($action === 'approve') {
+        // Check if user has sufficient balance
+        $totalBalance = Goal::where('user_id', $withdrawal->user_id)->sum('current_amount');
+        
+        if ($totalBalance < $withdrawal->amount) {
+            Response::error('User has insufficient balance for this withdrawal', 400);
+        }
+        
+        // Deduct from user's goals (proportionally from each goal)
+        $amountToDeduct = $withdrawal->amount;
+        $goals = Goal::where('user_id', $withdrawal->user_id)
+                     ->where('current_amount', '>', 0)
+                     ->orderBy('current_amount', 'desc')
+                     ->get();
+        
+        foreach ($goals as $goal) {
+            if ($amountToDeduct <= 0) break;
+            
+            $deductFromThisGoal = min($goal->current_amount, $amountToDeduct);
+            $goal->subtractAmount($deductFromThisGoal);
+            $amountToDeduct -= $deductFromThisGoal;
+        }
+        
+        // Approve withdrawal
+        $withdrawal->approve($notes ?? 'Withdrawal approved');
+        
+        Response::success('Withdrawal approved successfully', [
+            'id' => $withdrawal->id,
+            'amount' => (float) $withdrawal->amount,
+            'method' => $withdrawal->method,
+            'status' => $withdrawal->status,
+            'notes' => $withdrawal->notes,
+            'updated_at' => $withdrawal->updated_at->toDateTimeString()
+        ]);
+        
+    } else {
+        // Reject withdrawal
+        $withdrawal->reject($notes ?? 'Withdrawal rejected');
+        
+        Response::success('Withdrawal rejected', [
+            'id' => $withdrawal->id,
+            'amount' => (float) $withdrawal->amount,
+            'status' => $withdrawal->status,
+            'notes' => $withdrawal->notes,
+            'updated_at' => $withdrawal->updated_at->toDateTimeString()
+        ]);
+    }
+    
+} catch (Exception $e) {
+    Response::error('Failed to process withdrawal: ' . $e->getMessage(), 500);
 }
 ?>
 ```

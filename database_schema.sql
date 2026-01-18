@@ -30,6 +30,7 @@ CREATE TABLE transactions (
     id SERIAL PRIMARY KEY,
     goal_id INTEGER NOT NULL,
     amount DECIMAL(15,2) NOT NULL,
+    method VARCHAR(50) DEFAULT 'manual',
     description TEXT,
     transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -51,3 +52,20 @@ CREATE INDEX idx_goals_user_id ON goals(user_id);
 CREATE INDEX idx_transactions_goal_id ON transactions(goal_id);
 CREATE INDEX idx_tokens_token ON tokens(token);
 CREATE INDEX idx_tokens_user_id ON tokens(user_id);
+
+-- Tabel Withdrawals (Penarikan)
+CREATE TABLE withdrawals (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    method VARCHAR(50),          -- 'dana', 'gopay', 'bank_transfer', 'ovo', 'shopeepay'
+    account_number VARCHAR(50),
+    status VARCHAR(20) DEFAULT 'pending',  -- pending, approved, rejected
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_withdrawals_user_id ON withdrawals(user_id);
+CREATE INDEX idx_withdrawals_status ON withdrawals(status);

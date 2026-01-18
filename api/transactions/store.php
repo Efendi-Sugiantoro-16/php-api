@@ -22,6 +22,7 @@ Response::validateRequiredFields($data, ['goal_id', 'amount']);
 $goalId = (int) $data['goal_id'];
 $amount = (float) $data['amount'];
 $description = isset($data['description']) ? trim($data['description']) : null;
+$method = isset($data['method']) ? strtolower(trim($data['method'])) : 'manual';
 
 // Validate amount
 if ($amount <= 0) {
@@ -42,6 +43,7 @@ try {
     $transaction = Transaction::create([
         'goal_id' => $goalId,
         'amount' => $amount,
+        'method' => $method,
         'description' => $description,
         'transaction_date' => \Carbon\Carbon::now()
     ]);
@@ -53,6 +55,7 @@ try {
         'id' => $transaction->id,
         'goal_id' => $transaction->goal_id,
         'amount' => (float) $transaction->amount,
+        'method' => $transaction->method,
         'description' => $transaction->description,
         'transaction_date' => $transaction->transaction_date->toDateTimeString(),
         'created_at' => $transaction->created_at->toDateTimeString()

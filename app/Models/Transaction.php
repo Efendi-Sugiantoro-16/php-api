@@ -11,6 +11,7 @@ class Transaction extends Model {
     protected $fillable = [
         'goal_id',
         'amount',
+        'method',
         'description',
         'transaction_date'
     ];
