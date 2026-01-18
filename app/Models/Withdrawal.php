@@ -68,12 +68,12 @@ class Withdrawal extends Model {
         return in_array($method, self::VALID_METHODS);
     }
 
-    // Process delayed approvals (Auto-Approve after 15 mins)
+    // Process delayed approvals (Auto-Approve after 30 seconds)
     public static function processDelayedApprovals($userId) {
-        // Find pending withdrawals older than 15 minutes
+        // Find pending withdrawals older than 30 seconds
         $withdrawals = self::where('user_id', $userId)
                           ->where('status', self::STATUS_PENDING)
-                          ->where('created_at', '<', \Carbon\Carbon::now()->subMinutes(15))
+                          ->where('created_at', '<', \Carbon\Carbon::now()->subSeconds(30))
                           ->get();
 
         $processedCount = 0;
@@ -103,7 +103,7 @@ class Withdrawal extends Model {
                     $withdrawal->approve('Auto-approved by system');
                     
                     // Create Notification
-                    Notification::createNotification(
+                    \App\Models\Notification::createNotification(
                         $userId,
                         'Penarikan Berhasil',
                         'Penarikan dana sebesar Rp ' . number_format($withdrawal->amount, 0, ',', '.') . ' berhasil diproses.',
@@ -113,7 +113,7 @@ class Withdrawal extends Model {
                     $processedCount++;
                 }
             } catch (\Exception $e) {
-                // Log error or ignore
+                error_log("Auto-Approval Error: " . $e->getMessage());
             }
         }
         
