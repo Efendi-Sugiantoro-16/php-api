@@ -1,6 +1,5 @@
 <?php
-// migrations/create_tables.php
-// Script untuk membuat tabel menggunakan Eloquent Schema Builder
+
 
 require_once __DIR__ . '/../bootstrap.php';
 
