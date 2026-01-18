@@ -624,6 +624,49 @@ class NotificationScreen extends StatelessWidget {
 
 ---
 
+
+### Firebase Push Notification Setup
+
+**Dependency (`pubspec.yaml`):**
+```yaml
+dependencies:
+  firebase_core: latest_version
+  firebase_messaging: latest_version
+```
+
+**Implementation Code:**
+Panggil fungsi ini setelah user berhasil Login:
+
+```dart
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+Future<void> setupPushNotifications(int userId) async {
+  final fcm = FirebaseMessaging.instance;
+  
+  // 1. Request Permission
+  await fcm.requestPermission();
+  
+  // 2. Subscribe to specific topic for this user
+  // Backend mengirim notif ke topic: "user_{id}"
+  await fcm.subscribeToTopic('user_$userId');
+  
+  // 3. Handle Foreground Messages (Optional)
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    if (message.notification != null) {
+      print('Foreground Notification: ${message.notification!.title}');
+      // Bisa tampilkan snackbar atau local notification custom disini
+    }
+  });
+  
+  print("✅ Subscribed to topic: user_$userId");
+}
+```
+
+**Penting:**
+Jangan lupa panggil `await setupPushNotifications(user['id']);` di dalam fungsi `login()` setelah sukses dapat response dari server.
+
+---
+
 ## 9. Local Photo Storage
 
 ### Save Profile Photo
