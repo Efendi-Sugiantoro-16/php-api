@@ -10,9 +10,9 @@
     "autoload": {
         "psr-4": {
             "App\\": "app/",
-            "App\\Models\\": "app/models/",
-            "App\\Middleware\\": "app/middleware/",
-            "App\\Helpers\\": "app/helpers/"
+            "App\\Models\\": "app/Models/",
+            "App\\Middleware\\": "app/Middleware/",
+            "App\\Helpers\\": "app/Helpers/"
         }
     }
 }
