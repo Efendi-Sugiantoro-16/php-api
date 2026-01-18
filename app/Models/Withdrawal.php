@@ -69,24 +69,30 @@ class Withdrawal extends Model {
     }
 
     // Process delayed approvals (Auto-Approve after 30 seconds)
-    public static function processDelayedApprovals($userId) {
-        // Find pending withdrawals older than 30 seconds
-        $withdrawals = self::where('user_id', $userId)
-                          ->where('status', self::STATUS_PENDING)
-                          ->where('created_at', '<', \Carbon\Carbon::now()->subSeconds(30))
-                          ->get();
+    // If $userId is null, check ALL users (for Cron Job)
+    public static function processDelayedApprovals($userId = null) {
+        // Build query
+        $query = self::where('status', self::STATUS_PENDING)
+                     ->where('created_at', '<', \Carbon\Carbon::now()->subSeconds(30));
+        
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
 
+        $withdrawals = $query->get();
         $processedCount = 0;
 
         foreach ($withdrawals as $withdrawal) {
+            $uid = $withdrawal->user_id; // Use ID from record
+            
             // Logic to approve and deduct balance
             try {
                 // Get user goals to deduct balance
-                $totalBalance = Goal::where('user_id', $userId)->sum('current_amount');
+                $totalBalance = Goal::where('user_id', $uid)->sum('current_amount');
                 
                 if ($totalBalance >= $withdrawal->amount) {
                     $amountToDeduct = $withdrawal->amount;
-                    $goals = Goal::where('user_id', $userId)
+                    $goals = Goal::where('user_id', $uid)
                                  ->where('current_amount', '>', 0)
                                  ->orderBy('current_amount', 'desc')
                                  ->get();
@@ -104,7 +110,7 @@ class Withdrawal extends Model {
                     
                     // Create Notification
                     \App\Models\Notification::createNotification(
-                        $userId,
+                        $uid,
                         'Penarikan Berhasil',
                         'Penarikan dana sebesar Rp ' . number_format($withdrawal->amount, 0, ',', '.') . ' berhasil diproses.',
                         'withdrawal'

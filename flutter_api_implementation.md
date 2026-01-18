@@ -634,36 +634,67 @@ dependencies:
   firebase_messaging: latest_version
 ```
 
-**Implementation Code:**
-Panggil fungsi ini setelah user berhasil Login:
+**Implementation Code (Lengkap dengan Foreground Handler):**
+Panggil fungsi `setupPushNotifications` ini di dalam controller dashboard atau setelah login sukses.
 
 ```dart
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart'; // Asumsi pakai GetX, jika tidak ganti dengan ScaffoldMessenger
 
 Future<void> setupPushNotifications(int userId) async {
   final fcm = FirebaseMessaging.instance;
   
-  // 1. Request Permission
-  await fcm.requestPermission();
+  // 1. Request Permission (Wajib untuk Android 13+)
+  NotificationSettings settings = await fcm.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
   
-  // 2. Subscribe to specific topic for this user
-  // Backend mengirim notif ke topic: "user_{id}"
-  await fcm.subscribeToTopic('user_$userId');
-  
-  // 3. Handle Foreground Messages (Optional)
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    if (message.notification != null) {
-      print('Foreground Notification: ${message.notification!.title}');
-      // Bisa tampilkan snackbar atau local notification custom disini
-    }
-  });
-  
-  print("✅ Subscribed to topic: user_$userId");
+  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+    print('✅ User granted permission');
+    
+    // 2. Subscribe to specific topic
+    // Backend mengirim ke: "user_{id}"
+    String topic = 'user_$userId';
+    await fcm.subscribeToTopic(topic);
+    print("✅ Subscribed to topic: $topic");
+
+    // 3. Handle Foreground Messages (Saat aplikasi sedang dibuka)
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('🚀 Got a message whilst in the foreground!');
+      
+      if (message.notification != null) {
+        // Tampilkan Snackbar/Dialog agar user sadar ada notif masuk
+        Get.snackbar(
+          message.notification!.title ?? 'Notifikasi Baru',
+          message.notification!.body ?? '',
+          backgroundColor: Colors.white,
+          colorText: Colors.black,
+          icon: Icon(Icons.notifications_active, color: Colors.blue),
+          duration: Duration(seconds: 4),
+          snackPosition: SnackPosition.TOP,
+          onTap: (_) {
+            // Arahkan ke halaman notifikasi jika diklik
+            // Get.to(() => NotificationScreen());
+          }
+        );
+      }
+    });
+
+  } else {
+    print('❌ User declined or has not accepted permission');
+  }
 }
 ```
 
-**Penting:**
-Jangan lupa panggil `await setupPushNotifications(user['id']);` di dalam fungsi `login()` setelah sukses dapat response dari server.
+**Cara Pakai (Contoh di Login Controller):**
+```dart
+// Setelah simpan token & user data
+await setupPushNotifications(user['id']);
+Get.offAll(() => DashboardScreen());
+```
 
 ---
 
