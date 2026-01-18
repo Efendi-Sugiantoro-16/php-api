@@ -48,6 +48,20 @@ try {
         'transaction_date' => \Carbon\Carbon::now()
     ]);
     
+    // Create Notification
+    try {
+        if ($transaction) {
+            \App\Models\Notification::createNotification(
+                $userId,
+                'Tabungan Berhasil',
+                'Tabungan sebesar Rp ' . number_format($amount, 0, ',', '.') . ' berhasil ditambahkan via ' . ucfirst($method) . '.',
+                'deposit'
+            );
+        }
+    } catch (\Exception $e) {
+        // Ignore notification errors
+    }
+    
     // Update goal amount
     $goal->addAmount($amount);
     

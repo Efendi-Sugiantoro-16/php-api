@@ -16,6 +16,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 $userId = Auth::authenticate();
 
 try {
+    // Trigger auto-approval check
+    Withdrawal::processDelayedApprovals($userId);
+
     // Build query
     $query = Withdrawal::where('user_id', $userId);
     

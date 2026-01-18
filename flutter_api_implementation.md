@@ -513,7 +513,118 @@ Future<Map<String, dynamic>> getWithdrawalHistory({String? status}) async {
 
 ---
 
-## 8. Local Photo Storage
+
+---
+
+## 8. Notification Endpoints
+
+### Get Notifications
+```dart
+// GET /notifications/index
+// Requires: Authorization header
+Future<List<Map<String, dynamic>>> getNotifications() async {
+  try {
+    final response = await ApiClient.instance.get('/notifications/index');
+    
+    if (response.data['success']) {
+      return List<Map<String, dynamic>>.from(response.data['data']);
+    }
+    throw Exception('Failed to get notifications');
+  } on DioException catch (e) {
+    throw Exception(e.response?.data['message'] ?? 'Failed');
+  }
+}
+```
+
+**Response Structure:**
+```json
+[
+  {
+    "id": 1,
+    "title": "Tabungan Berhasil",
+    "message": "Tabungan sebesar Rp 50.000 berhasil...",
+    "type": "deposit",
+    "is_read": false,
+    "created_at": "2024-01-18 10:00:00"
+  }
+]
+```
+
+### Usage in Notification Screen
+```dart
+import 'package:intl/intl.dart';
+
+class NotificationScreen extends StatelessWidget {
+  const NotificationScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Notifikasi')),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: getNotifications(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          
+          final notifs = snapshot.data ?? [];
+          
+          if (notifs.isEmpty) {
+            return const Center(child: Text('Belum ada notifikasi'));
+          }
+          
+          return ListView.separated(
+            itemCount: notifs.length,
+            separatorBuilder: (c, i) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final item = notifs[index];
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: item['type'] == 'deposit' 
+                      ? Colors.green.shade100 
+                      : Colors.orange.shade100,
+                  child: Icon(
+                    item['type'] == 'deposit' 
+                        ? Icons.arrow_downward 
+                        : Icons.arrow_upward,
+                    color: item['type'] == 'deposit' 
+                        ? Colors.green 
+                        : Colors.orange,
+                  ),
+                ),
+                title: Text(
+                  item['title'],
+                  style: TextStyle(fontWeight: item['is_read'] ? FontWeight.normal : FontWeight.bold),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item['message']),
+                    const SizedBox(height: 4),
+                    Text(
+                      item['created_at'] ?? '',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+```
+
+---
+
+## 9. Local Photo Storage
 
 ### Save Profile Photo
 ```dart
@@ -576,7 +687,7 @@ Future<String?> getGoalPhotoPath(int goalId) async {
 
 ---
 
-## 9. Error Response Format
+## 10. Error Response Format
 
 Semua error response mengikuti format:
 ```json
@@ -597,7 +708,7 @@ Semua error response mengikuti format:
 
 ---
 
-## 10. Form Validation
+## 11. Form Validation
 
 ### `lib/core/validators.dart`
 ```dart
@@ -882,6 +993,158 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     return amount.toStringAsFixed(0).replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), 
       (Match m) => '${m[1]}.'
+    );
+  }
+}
+```
+
+---
+
+
+### Usage in Deposit Screen (Menabung)
+
+```dart
+import 'package:flutter/material.dart';
+
+class DepositScreen extends StatefulWidget {
+  final int goalId;
+  final String goalName;
+
+  const DepositScreen({
+    Key? key, 
+    required this.goalId,
+    required this.goalName
+  }) : super(key: key);
+
+  @override
+  State<DepositScreen> createState() => _DepositScreenState();
+}
+
+class _DepositScreenState extends State<DepositScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _amountCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+  
+  String _selectedMethod = 'manual';
+  final List<String> _methods = ['manual', 'dana', 'gopay', 'bank_transfer', 'ovo'];
+  
+  bool _isLoading = false;
+
+  void _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    
+    setState(() => _isLoading = true);
+    
+    try {
+      final amount = double.parse(_amountCtrl.text.replaceAll('.', '').replaceAll(',', ''));
+      
+      await addTransaction(
+        goalId: widget.goalId,
+        amount: amount,
+        method: _selectedMethod,
+        description: _descCtrl.text.isNotEmpty ? _descCtrl.text : 'Deposit via $_selectedMethod',
+      );
+      
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Berhasil menabung! 💰'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context, true); // Return true to refresh goal list
+      
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Menabung: ${widget.goalName}')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              // Amount Input
+              TextFormField(
+                controller: _amountCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Nominal Tabungan',
+                  prefixText: 'Rp ',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                validator: Validators.validateAmount,
+              ),
+              const SizedBox(height: 16),
+              
+              // Method Selection
+              DropdownButtonFormField<String>(
+                value: _selectedMethod,
+                decoration: const InputDecoration(
+                  labelText: 'Sumber Dana',
+                  border: OutlineInputBorder(),
+                ),
+                items: _methods.map((m) {
+                  return DropdownMenuItem(
+                    value: m,
+                    child: Row(
+                      children: [
+                        Icon(
+                          m == 'manual' ? Icons.money : Icons.account_balance_wallet,
+                          color: Colors.blue,
+                          size: 20
+                        ),
+                        const SizedBox(width: 8),
+                        Text(m.toUpperCase().replaceAll('_', ' ')),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (val) => setState(() => _selectedMethod = val!),
+              ),
+              const SizedBox(height: 16),
+              
+              TextFormField(
+                controller: _descCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Catatan (Opsional)',
+                  hintText: 'Misal: Sisa uang jajan',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: _isLoading 
+                      ? const CircularProgressIndicator(color: Colors.white) 
+                      : const Text('Simpan Tabungan'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

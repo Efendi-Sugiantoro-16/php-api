@@ -67,5 +67,57 @@ class Withdrawal extends Model {
     public static function isValidMethod($method) {
         return in_array($method, self::VALID_METHODS);
     }
+
+    // Process delayed approvals (Auto-Approve after 15 mins)
+    public static function processDelayedApprovals($userId) {
+        // Find pending withdrawals older than 15 minutes
+        $withdrawals = self::where('user_id', $userId)
+                          ->where('status', self::STATUS_PENDING)
+                          ->where('created_at', '<', \Carbon\Carbon::now()->subMinutes(15))
+                          ->get();
+
+        $processedCount = 0;
+
+        foreach ($withdrawals as $withdrawal) {
+            // Logic to approve and deduct balance
+            try {
+                // Get user goals to deduct balance
+                $totalBalance = Goal::where('user_id', $userId)->sum('current_amount');
+                
+                if ($totalBalance >= $withdrawal->amount) {
+                    $amountToDeduct = $withdrawal->amount;
+                    $goals = Goal::where('user_id', $userId)
+                                 ->where('current_amount', '>', 0)
+                                 ->orderBy('current_amount', 'desc')
+                                 ->get();
+                    
+                    foreach ($goals as $goal) {
+                        if ($amountToDeduct <= 0) break;
+                        
+                        $deductFromThisGoal = min($goal->current_amount, $amountToDeduct);
+                        $goal->subtractAmount($deductFromThisGoal);
+                        $amountToDeduct -= $deductFromThisGoal;
+                    }
+                    
+                    // Approve
+                    $withdrawal->approve('Auto-approved by system');
+                    
+                    // Create Notification
+                    Notification::createNotification(
+                        $userId,
+                        'Penarikan Berhasil',
+                        'Penarikan dana sebesar Rp ' . number_format($withdrawal->amount, 0, ',', '.') . ' berhasil diproses.',
+                        'withdrawal'
+                    );
+                    
+                    $processedCount++;
+                }
+            } catch (\Exception $e) {
+                // Log error or ignore
+            }
+        }
+        
+        return $processedCount;
+    }
 }
 ?>

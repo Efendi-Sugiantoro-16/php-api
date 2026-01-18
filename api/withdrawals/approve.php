@@ -69,6 +69,14 @@ try {
         // Approve withdrawal
         $withdrawal->approve($notes ?? 'Withdrawal approved');
         
+        // Notification
+        \App\Models\Notification::createNotification(
+            $userId,
+            'Penarikan Disetujui',
+            'Penarikan dana sebesar Rp ' . number_format($withdrawal->amount, 0, ',', '.') . ' telah disetujui.',
+            'withdrawal'
+        );
+        
         Response::success('Withdrawal approved successfully', [
             'id' => $withdrawal->id,
             'amount' => (float) $withdrawal->amount,
@@ -81,6 +89,14 @@ try {
     } else {
         // Reject withdrawal
         $withdrawal->reject($notes ?? 'Withdrawal rejected');
+        
+        // Notification
+        \App\Models\Notification::createNotification(
+            $userId,
+            'Penarikan Ditolak',
+            'Penarikan dana sebesar Rp ' . number_format($withdrawal->amount, 0, ',', '.') . ' ditolak. Catatan: ' . ($notes ?? '-'),
+            'withdrawal'
+        );
         
         Response::success('Withdrawal rejected', [
             'id' => $withdrawal->id,

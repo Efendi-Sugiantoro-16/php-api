@@ -38,8 +38,11 @@ if ($uri === '/' || $uri === '/index.php') {
             ],
             'withdrawals' => [
                 'POST /api/withdrawals/request' => 'Request withdrawal (requires auth)',
-                'GET /api/withdrawals/index' => 'Get withdrawal history (requires auth)',
+                'GET /api/withdrawals/index' => 'Get withdrawal history (requires auth) - Auto-approves old pending',
                 'POST /api/withdrawals/approve' => 'Approve/reject withdrawal (admin)'
+            ],
+            'notifications' => [
+                'GET /api/notifications/index' => 'Get user notifications (requires auth)'
             ]
         ],
         'authentication' => [
