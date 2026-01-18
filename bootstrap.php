@@ -6,9 +6,12 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Dotenv\Dotenv;
 use Illuminate\Database\Capsule\Manager as Capsule;
 
-// Load environment variables
-$dotenv = Dotenv::createMutable(__DIR__);
-$dotenv->load();
+// Load environment variables (optional - for local development)
+// On production (Railway), environment variables are set directly
+if (file_exists(__DIR__ . '/.env')) {
+    $dotenv = Dotenv::createMutable(__DIR__);
+    $dotenv->load();
+}
 
 // Setup Eloquent ORM
 $capsule = new Capsule;
