@@ -46,8 +46,30 @@ class Goal extends Model {
     
     // Method untuk menambah saldo
     public function addAmount($amount) {
-        $this->current_amount += $amount;
+        $remaining = $this->target_amount - $this->current_amount;
+        $overflow = 0;
+        
+        if ($amount >= $remaining) {
+            // Goal akan completed
+            $this->current_amount = $this->target_amount;
+            $overflow = $amount - $remaining;
+        } else {
+            // Deposit normal
+            $this->current_amount += $amount;
+        }
+        
         $this->save();
+        
+        return [
+            'completed' => $this->isCompleted(),
+            'deposited_amount' => $amount - $overflow,
+            'overflow_amount' => $overflow
+        ];
+    }
+    
+    // Method untuk cek apakah goal sudah completed
+    public function isCompleted() {
+        return $this->current_amount >= $this->target_amount;
     }
     
     // Method untuk mengurangi saldo

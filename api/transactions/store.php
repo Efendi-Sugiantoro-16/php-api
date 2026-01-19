@@ -62,8 +62,31 @@ try {
         // Ignore notification errors
     }
     
-    // Update goal amount
-    $goal->addAmount($amount);
+    // Update goal amount and get overflow info
+    $result = $goal->addAmount($amount);
+    
+    // Update notification message if goal completed
+    $notificationMessage = 'Tabungan sebesar Rp ' . number_format($amount, 0, ',', '.') . ' berhasil ditambahkan via ' . ucfirst($method) . '.';
+    if ($result['completed']) {
+        $notificationMessage = 'Selamat! Goal "' . $goal->name . '" telah tercapai! Tabungan sebesar Rp ' . number_format($result['deposited_amount'], 0, ',', '.') . ' ditambahkan.';
+        if ($result['overflow_amount'] > 0) {
+            $notificationMessage .= ' Anda memiliki sisa Rp ' . number_format($result['overflow_amount'], 0, ',', '.') . ' untuk dialokasikan.';
+        }
+    }
+    
+    // Create Notification
+    try {
+        if ($transaction) {
+            \App\Models\Notification::createNotification(
+                $userId,
+                $result['completed'] ? 'Goal Tercapai!' : 'Tabungan Berhasil',
+                $notificationMessage,
+                'deposit'
+            );
+        }
+    } catch (\Exception $e) {
+        // Ignore notification errors
+    }
     
     Response::success('Transaction created successfully', [
         'id' => $transaction->id,
@@ -72,7 +95,10 @@ try {
         'method' => $transaction->method,
         'description' => $transaction->description,
         'transaction_date' => $transaction->transaction_date->toDateTimeString(),
-        'created_at' => $transaction->created_at->toDateTimeString()
+        'created_at' => $transaction->created_at->toDateTimeString(),
+        'goal_completed' => $result['completed'],
+        'deposited_amount' => (float) $result['deposited_amount'],
+        'overflow_amount' => (float) $result['overflow_amount']
     ], 201);
     
 } catch (Exception $e) {

@@ -11,7 +11,8 @@ class User extends Model {
     protected $fillable = [
         'name',
         'email',
-        'password'
+        'password',
+        'available_balance'
     ];
     
     protected $hidden = [
@@ -39,6 +40,21 @@ class User extends Model {
     // Verify password
     public function verifyPassword($password) {
         return password_verify($password, $this->password);
+    }
+    
+    // Method untuk menambah available balance
+    public function addAvailableBalance($amount) {
+        $this->available_balance += $amount;
+        $this->save();
+    }
+    
+    // Method untuk mengurangi available balance
+    public function subtractAvailableBalance($amount) {
+        if ($this->available_balance < $amount) {
+            throw new \Exception('Insufficient available balance');
+        }
+        $this->available_balance -= $amount;
+        $this->save();
     }
 }
 ?>
