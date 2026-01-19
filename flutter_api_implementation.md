@@ -954,7 +954,7 @@ class _OverflowAllocationDialogState extends State<OverflowAllocationDialog> {
       // Call allocation endpoint
       await allocateOverflow(
         allocations: allocations,
-        saveRemainingAsBalance: remainingOverflow > 0,
+        saveToBalanceAmount: remainingOverflow > 0 ? remainingOverflow : null,
       );
       
       Navigator.pop(context);
@@ -983,7 +983,121 @@ class _OverflowAllocationDialogState extends State<OverflowAllocationDialog> {
       ),
       content: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+          : goals.isEmpty
+              // CASE: All goals completed - offer withdrawal option
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.celebration, color: Colors.green),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Selamat! Semua goal telah tercapai! 🎉',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Anda memiliki sisa dana:',
+                      style: TextStyle(color: Colors.grey[700]),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      currencyFormat.format(widget.overflowAmount),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Pilih tindakan:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Option 1: Save as Balance
+                    Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.account_balance_wallet, color: Colors.blue),
+                        title: const Text('Simpan di Akun'),
+                        subtitle: const Text('Gunakan untuk goal baru atau deposit nanti'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () async {
+                          try {
+                            // Save to available balance
+                            await allocateOverflow(
+                              allocations: [],
+                              saveToBalanceAmount: widget.overflowAmount,
+                            );
+                            Navigator.pop(context);
+                            Get.snackbar(
+                              'Berhasil',
+                              'Dana disimpan sebagai Available Balance',
+                              backgroundColor: Colors.green.shade100,
+                            );
+                          } catch (e) {
+                            Get.snackbar('Error', 'Gagal menyimpan: $e');
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    // Option 2: Withdraw to E-Wallet
+                    Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.payment, color: Colors.orange),
+                        title: const Text('Tarik ke E-Wallet'),
+                        subtitle: const Text('Transfer ke Dana, GoPay, OVO, dll'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () async {
+                          try {
+                            // CRITICAL: Save to balance FIRST before withdrawing
+                            // This ensures the funds exist in available_balance
+                            await allocateOverflow(
+                              allocations: [],
+                              saveToBalanceAmount: widget.overflowAmount,
+                            );
+                            
+                            Navigator.pop(context); // Close dialog
+                          
+                            // Navigate to withdrawal screen with prefilled amount
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => WithdrawalScreen(
+                                  prefilledAmount: widget.overflowAmount,
+                                  fromOverflow: true,
+                                ),
+                              ),
+                            );
+                          } catch (e) {
+                            Get.snackbar('Error', 'Gagal memproses: $e');
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                )
+              // CASE: Goals available for allocation
+              : SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1120,12 +1234,12 @@ void showOverflowAllocationDialog({
 // POST /transactions/allocate
 Future<Map<String, dynamic>> allocateOverflow({
   required List<Map<String, dynamic>> allocations,
-  bool saveRemainingAsBalance = false,
+  double? saveToBalanceAmount,
 }) async {
   try {
     final response = await ApiClient.instance.post('/transactions/allocate', data: {
       'allocations': allocations,
-      'save_remaining_as_balance': saveRemainingAsBalance,
+      if (saveToBalanceAmount != null) 'save_to_balance_amount': saveToBalanceAmount,
     });
     
     if (response.data['success']) {
@@ -1145,13 +1259,9 @@ Future<Map<String, dynamic>> allocateOverflow({
     {
       "goal_id": 2,
       "amount": 5000000
-    },
-    {
-      "goal_id": 3,
-      "amount": 3000000
     }
   ],
-  "save_remaining_as_balance": true
+  "save_to_balance_amount": 3000000
 }
 ```
 
@@ -1233,6 +1343,105 @@ class DashboardCard extends StatelessWidget {
 3. **Remaining Balance**: Sisa yang tidak dialokasikan disimpan sebagai `available_balance` di user
 4. **Goal Completion**: Backend otomatis detect dan complete goal jika target tercapai
 5. **Multiple Allocations**: User bisa alokasikan overflow ke beberapa goal sekaligus
+6. **🆕 All Goals Completed**: Ketika semua goal sudah selesai, user diberi 2 pilihan:
+   - **Simpan di Akun** → Dana masuk `available_balance` untuk digunakan nanti
+   - **Tarik ke E-Wallet** → Langsung redirect ke withdrawal screen dengan amount sudah terisi
+
+---
+
+### Enhancement: Withdrawal Screen dengan Prefilled Amount
+
+Untuk support withdrawal dari overflow, `WithdrawalScreen` perlu accept 2 parameter opsional:
+
+```dart
+class WithdrawalScreen extends StatefulWidget {
+  final double? prefilledAmount;  // ← Amount dari overflow
+  final bool fromOverflow;         // ← Flag untuk tracking
+
+  const WithdrawalScreen({
+    Key? key,
+    this.prefilledAmount,
+    this.fromOverflow = false,
+  }) : super(key: key);
+
+  @override
+  State<WithdrawalScreen> createState() => _WithdrawalScreenState();
+}
+
+class _WithdrawalScreenState extends State<WithdrawalScreen> {
+  late TextEditingController _amountController;
+  
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill amount jika dari overflow
+    _amountController = TextEditingController(
+      text: widget.prefilledAmount != null 
+          ? widget.prefilledAmount!.toStringAsFixed(0)
+          : '',
+    );
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.fromOverflow 
+            ? 'Tarik Dana Overflow' 
+            : 'Penarikan Dana'
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            if (widget.fromOverflow)
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue[700]),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Dana dari goal yang telah selesai',
+                        style: TextStyle(color: Colors.blue[700]),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            
+            // Amount field dengan nilai pre-filled
+            TextFormField(
+              controller: _amountController,
+              decoration: const InputDecoration(
+                labelText: 'Jumlah Penarikan',
+                prefixText: 'Rp ',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+              enabled: !widget.fromOverflow, // Disable jika dari overflow
+            ),
+            
+            // ... rest of withdrawal form
+          ],
+        ),
+      ),
+    );
+  }
+}
+```
+
+**Perhatikan:**
+- `prefilledAmount` → Amount dari overflow yang auto-filled
+- `fromOverflow` → Flag untuk UI customization (banner info, disable amount field, dll)
+- Amount field **disabled** jika dari overflow agar user tidak ubah nilai
 
 ---
 
@@ -1414,7 +1623,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class WithdrawalScreen extends StatefulWidget {
-  const WithdrawalScreen({Key? key}) : super(key: key);
+  final double? prefilledAmount;
+  final bool fromOverflow;
+
+  const WithdrawalScreen({
+    Key? key,
+    this.prefilledAmount,
+    this.fromOverflow = false,
+  }) : super(key: key);
 
   @override
   State<WithdrawalScreen> createState() => _WithdrawalScreenState();
@@ -1422,7 +1638,7 @@ class WithdrawalScreen extends StatefulWidget {
 
 class _WithdrawalScreenState extends State<WithdrawalScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _amountCtrl = TextEditingController();
+  late TextEditingController _amountCtrl;
   final _accountCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   
@@ -1430,11 +1646,16 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   final List<String> _methods = ['dana', 'gopay', 'bank_transfer', 'ovo', 'shopeepay'];
   
   bool _isLoading = false;
-  double _totalSavings = 0; // Sebaiknya ambil dari Dashboard API
+  double _totalSavings = 0;
 
   @override
   void initState() {
     super.initState();
+    _amountCtrl = TextEditingController(
+      text: widget.prefilledAmount != null 
+          ? widget.prefilledAmount!.toStringAsFixed(0) 
+          : ''
+    );
     _fetchBalance();
   }
 
@@ -1495,7 +1716,12 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tarik Saldo')),
+      appBar: AppBar(
+        title: Text(widget.fromOverflow 
+            ? 'Tarik Dana Overflow' 
+            : 'Tarik Saldo'
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -1503,35 +1729,58 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Info Saldo
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.account_balance_wallet, color: Colors.blue),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Total Tabungan', style: TextStyle(color: Colors.grey)),
-                        Text(
-                          'Rp ${_formatcurrency(_totalSavings)}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
-                          ),
+              // Info Banner for Overflow
+              if (widget.fromOverflow)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.blue[700]),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Dana dari goal yang telah selesai',
+                          style: TextStyle(color: Colors.blue[700]),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
+                )
+              else
+                // Info Saldo (Only show for normal withdrawal)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.account_balance_wallet, color: Colors.blue),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Total Tabungan', style: TextStyle(color: Colors.grey)),
+                          Text(
+                            'Rp ${_formatcurrency(_totalSavings)}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
               const SizedBox(height: 24),
               
               // Form Input
@@ -1564,6 +1813,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
               
               TextFormField(
                 controller: _amountCtrl,
+                enabled: !widget.fromOverflow, // Disable if from overflow
                 decoration: const InputDecoration(
                   labelText: 'Jumlah Penarikan',
                   prefixText: 'Rp ',

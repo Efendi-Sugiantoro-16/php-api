@@ -28,8 +28,10 @@ if (!is_array($allocations)) {
     Response::error('Allocations must be an array', 400);
 }
 
-if (empty($allocations)) {
-    Response::error('Allocations cannot be empty', 400);
+// Allow empty allocations ONLY IF save_remaining_as_balance is true
+// This covers the case where user wants to save ALL overflow to balance/withdraw
+if (empty($allocations) && !$saveRemainingAsBalance) {
+    Response::error('Allocations cannot be empty unless saving remaining as balance', 400);
 }
 
 try {
@@ -111,18 +113,25 @@ try {
         $totalAllocated += $amount;
     }
     
-    // Calculate remaining after allocations
-    $remainingBalance = 0;
-    if ($saveRemainingAsBalance) {
-        // This would be calculated from the original overflow amount
-        // For now, we'll assume the remaining is passed or calculated elsewhere
-        // In real implementation, you might want to track the original overflow amount
+    // Handle saving to balance explicitly
+    $saveToBalanceAmount = isset($data['save_to_balance_amount']) ? (float)$data['save_to_balance_amount'] : 0;
+    
+    // Also support legacy save_remaining_as_balance but only if we can determine amount? 
+    // Actually, we can't. So we rely on save_to_balance_amount.
+    // However, validation allows empty allocations if save_remaining_as_balance is true.
+    // We should strictly use save_to_balance_amount if provided.
+    
+    if ($saveToBalanceAmount > 0) {
+        $user->addAvailableBalance($saveToBalanceAmount);
+        // Transaction for balance addition? Maybe useful for history but internal.
+        // Or we can just rely on the balance update.
     }
     
     Response::success('Overflow successfully allocated', [
         'allocated' => $allocatedResults,
         'available_balance' => (float) $user->available_balance,
-        'total_allocated' => (float) $totalAllocated
+        'saved_to_balance' => (float) $saveToBalanceAmount,
+        'total_allocated' => (float) ($totalAllocated + $saveToBalanceAmount)
     ]);
     
 } catch (Exception $e) {
