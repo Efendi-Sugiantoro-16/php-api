@@ -26,6 +26,7 @@ try {
                          'current_amount' => (float) $goal->current_amount,
                          'deadline' => $goal->deadline ? $goal->deadline->format('Y-m-d') : null,
                          'description' => $goal->description,
+                         'type' => $goal->type, // Add type
                          'created_at' => $goal->created_at->toDateTimeString(),
                          'progress_percentage' => $goal->progress_percentage
                      ];
