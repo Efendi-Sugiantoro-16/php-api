@@ -14,7 +14,8 @@ class Goal extends Model {
         'target_amount',
         'current_amount',
         'deadline',
-        'description'
+        'description',
+        'type'
     ];
     
     protected $casts = [

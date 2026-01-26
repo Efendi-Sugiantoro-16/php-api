@@ -37,7 +37,7 @@ if (!Withdrawal::isValidMethod($method)) {
 }
 
 try {
-    // Validate source of funds
+    // Validate source of funds & Method constraints
     if ($goalId) {
         // Validate goal exists and belongs to user
         $goal = Goal::where('id', $goalId)
@@ -46,6 +46,16 @@ try {
         
         if (!$goal) {
             Response::error('Goal not found or does not belong to you', 404);
+        }
+        
+        $goalType = $goal->type ?? 'digital';
+        
+        // Strict Method constraints
+        if ($goalType === 'cash' && $method !== 'manual') {
+             Response::error('Goal Tunai hanya bisa ditarik secara Manual (Ambil Tunai).', 400);
+        }
+        if ($goalType === 'digital' && $method === 'manual') {
+             Response::error('Goal Digital tidak bisa ditarik secara Manual. Gunakan Transfer E-Wallet.', 400);
         }
         
         // Validate sufficient balance in THIS SPECIFIC GOAL
@@ -57,6 +67,16 @@ try {
         }
     } else {
         // Withdraw from AVAILABLE BALANCE
+        // Balance is considered DIGITAL. Can only withdraw via Transfer.
+        if ($method === 'manual') {
+             // Exception: "Ambil Tunai" from Balance? 
+             // Logic: Available Balance comes from Digital Overflow OR Manual Overflow (which is "kept" as cash, so never hits balance?)
+             // WAIT. Manual Overflow logic: "Ambil Kembalian" => Money in hand. It DOES NOT hit balance.
+             // So Available Balance contains ONLY Digital money.
+             // So cannot withdraw 'manual' from Balance.
+             Response::error('Saldo Akun (Digital) tidak bisa ditarik Tunai Manual. Gunakan Transfer E-Wallet.', 400);
+        }
+        
         $user = \App\Models\User::find($userId);
         if ($user->available_balance < $amount) {
             Response::error(

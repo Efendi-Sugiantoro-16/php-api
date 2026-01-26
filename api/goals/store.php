@@ -22,6 +22,7 @@ $name = trim($data['name']);
 $targetAmount = (float) $data['target_amount'];
 $deadline = isset($data['deadline']) ? $data['deadline'] : null;
 $description = isset($data['description']) ? trim($data['description']) : null;
+$type = isset($data['type']) && in_array($data['type'], ['cash', 'digital']) ? $data['type'] : 'digital';
 
 // Validate target amount
 if ($targetAmount <= 0) {
@@ -34,7 +35,8 @@ try {
         'name' => $name,
         'target_amount' => $targetAmount,
         'deadline' => $deadline,
-        'description' => $description
+        'description' => $description,
+        'type' => $type
     ]);
     
     Response::success('Goal created successfully', [
@@ -44,6 +46,7 @@ try {
         'current_amount' => (float) $goal->current_amount,
         'deadline' => $goal->deadline ? $goal->deadline->format('Y-m-d') : null,
         'description' => $goal->description,
+        'type' => $goal->type,
         'created_at' => $goal->created_at->toDateTimeString()
     ], 201);
     

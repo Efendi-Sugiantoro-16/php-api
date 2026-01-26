@@ -38,6 +38,22 @@ try {
     if (!$goal) {
         Response::error('Goal not found or access denied', 404);
     }
+
+    // Validate method based on goal type
+    // If goal type is undefined/null (old goals), default to 'digital' constraint or allow loose?
+    // Let's assume default is 'digital' from migration.
+    // However, the model doesn't automatically cast enum default on read unless DB enforces it.
+    // DB default is set.
+    
+    $goalType = $goal->type ?? 'digital'; // Fallback
+    
+    if ($goalType === 'cash' && $method !== 'manual') {
+        Response::error('Goal Tunai hanya bisa diisi dengan cara Manual (Cash).', 400);
+    }
+    
+    if ($goalType === 'digital' && $method === 'manual') {
+        Response::error('Goal Digital tidak bisa diisi dengan Manual. Gunakan E-Wallet atau Saldo Akun.', 400);
+    }
     
     // Create transaction
     $transaction = Transaction::create([
