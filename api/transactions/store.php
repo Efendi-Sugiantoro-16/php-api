@@ -47,6 +47,17 @@ try {
         'description' => $description,
         'transaction_date' => \Carbon\Carbon::now()
     ]);
+
+    // Handle Balance Deduction if method is 'balance'
+    if ($method === 'balance') {
+        $user = \App\Models\User::find($userId);
+        if ($user->available_balance < $amount) {
+            // Rollback (delete transaction) if insufficient
+            $transaction->delete();
+            Response::error('Insufficient available balance. You have Rp ' . number_format($user->available_balance, 0, ',', '.'), 400);
+        }
+        $user->subtractAvailableBalance($amount);
+    }
     
     // Create Notification
     try {
