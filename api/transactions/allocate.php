@@ -43,6 +43,19 @@ try {
     $allocatedResults = [];
     $totalAllocated = 0;
     
+    // Calculate total needed
+    foreach ($allocations as $allocation) {
+        $totalAllocated += (float) ($allocation['amount'] ?? 0);
+    }
+    
+    // Deduct from available balance first (since it was added in store.php)
+    if ($totalAllocated > 0) {
+        if ($user->available_balance < $totalAllocated) {
+             Response::error('Insufficient available balance to allocate Rp ' . number_format($totalAllocated, 0, ',', '.'), 400);
+        }
+        $user->subtractAvailableBalance($totalAllocated);
+    }
+    
     // Process each allocation
     foreach ($allocations as $allocation) {
         // Validate allocation structure
@@ -122,9 +135,9 @@ try {
     // We should strictly use save_to_balance_amount if provided.
     
     if ($saveToBalanceAmount > 0) {
-        $user->addAvailableBalance($saveToBalanceAmount);
-        // Transaction for balance addition? Maybe useful for history but internal.
-        // Or we can just rely on the balance update.
+        // NO-OP: Money is already in balance from store.php
+        // We just acknowledge it.
+        // $user->addAvailableBalance($saveToBalanceAmount); // REMOVED to avoid double count
     }
     
     Response::success('Overflow successfully allocated', [

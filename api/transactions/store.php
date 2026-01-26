@@ -76,6 +76,12 @@ try {
     // Update goal amount and get overflow info
     $result = $goal->addAmount($amount);
     
+    // Safety: Automatically add overflow to Available Balance
+    if ($result['overflow_amount'] > 0) {
+        $user = \App\Models\User::find($userId);
+        $user->addAvailableBalance($result['overflow_amount']);
+    }
+    
     // Update notification message if goal completed
     $notificationMessage = 'Tabungan sebesar Rp ' . number_format($amount, 0, ',', '.') . ' berhasil ditambahkan via ' . ucfirst($method) . '.';
     if ($result['completed']) {
