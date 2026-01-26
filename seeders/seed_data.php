@@ -1,6 +1,5 @@
 <?php
-// seeders/seed_data.php
-// Script untuk generate dummy data untuk testing
+
 
 require_once __DIR__ . '/../bootstrap.php';
 
