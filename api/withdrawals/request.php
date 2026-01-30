@@ -52,10 +52,10 @@ try {
         
         // Strict Method constraints
         if ($goalType === 'cash' && $method !== 'manual') {
-             Response::error('Goal Tunai hanya bisa ditarik secara Manual (Ambil Tunai).', 400);
+             Response::error('Cash Goal can only be withdrawn manually (Cash Pickup).', 400);
         }
         if ($goalType === 'digital' && $method === 'manual') {
-             Response::error('Goal Digital tidak bisa ditarik secara Manual. Gunakan Transfer E-Wallet.', 400);
+             Response::error('Digital Goal cannot be withdrawn manually. Use E-Wallet Transfer.', 400);
         }
         
         // Validate sufficient balance in THIS SPECIFIC GOAL
@@ -74,7 +74,7 @@ try {
              // WAIT. Manual Overflow logic: "Ambil Kembalian" => Money in hand. It DOES NOT hit balance.
              // So Available Balance contains ONLY Digital money.
              // So cannot withdraw 'manual' from Balance.
-             Response::error('Saldo Akun (Digital) tidak bisa ditarik Tunai Manual. Gunakan Transfer E-Wallet.', 400);
+             Response::error('Account Balance (Digital) cannot be withdrawn manually. Use E-Wallet Transfer.', 400);
         }
         
         $user = \App\Models\User::find($userId);

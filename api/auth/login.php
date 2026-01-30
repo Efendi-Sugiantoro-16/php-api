@@ -28,8 +28,13 @@ try {
         Response::error('Invalid email or password', 401);
     }
     
+    // Check if password hash exists
+    if (empty($user->password)) {
+        Response::error('Account has no password set. Please contact support.', 403);
+    }
+
     // Verify password
-    if (!$user->verifyPassword($password)) {
+    if (!password_verify($password, $user->password)) {
         Response::error('Invalid email or password', 401);
     }
     
@@ -41,7 +46,8 @@ try {
         'user' => [
             'id' => $user->id,
             'name' => $user->name,
-            'email' => $user->email
+            'email' => $user->email,
+            'available_balance' => isset($user->available_balance) ? (float)$user->available_balance : 0
         ]
     ]);
     

@@ -44,16 +44,18 @@ class User extends Model {
     
     // Method untuk menambah available balance
     public function addAvailableBalance($amount) {
-        $this->available_balance += $amount;
+        $balance = isset($this->available_balance) ? $this->available_balance : 0;
+        $this->available_balance = $balance + $amount;
         $this->save();
     }
     
     // Method untuk mengurangi available balance
     public function subtractAvailableBalance($amount) {
-        if ($this->available_balance < $amount) {
+        $balance = isset($this->available_balance) ? $this->available_balance : 0;
+        if ($balance < $amount) {
             throw new \Exception('Insufficient available balance');
         }
-        $this->available_balance -= $amount;
+        $this->available_balance = $balance - $amount;
         $this->save();
     }
 }
