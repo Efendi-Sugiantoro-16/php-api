@@ -34,6 +34,18 @@ try {
         Response::error('Access denied', 403);
     }
     
+    // BUSINESS RULE: Digital goals cannot have transactions deleted until completed
+    // This ensures financial integrity for e-wallet based goals
+    $goalType = $transaction->goal->type ?? 'digital';
+    $isCompleted = (float)$transaction->goal->current_amount >= (float)$transaction->goal->target_amount;
+    
+    if ($goalType === 'digital' && !$isCompleted) {
+        Response::error(
+            'Transactions from digital goals (e-wallet) cannot be deleted until the goal is completed. This maintains financial integrity of your digital savings.',
+            400
+        );
+    }
+    
     // Delete transaction
     $transaction->delete();
     

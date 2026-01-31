@@ -69,9 +69,9 @@ try {
         // Approve withdrawal
         $withdrawal->approve($notes ?? 'Withdrawal approved');
         
-        // Notification
+        // Notification to the user who requested the withdrawal
         \App\Models\Notification::createNotification(
-            $userId,
+            $withdrawal->user_id,
             'Penarikan Disetujui',
             'Penarikan dana sebesar Rp ' . number_format($withdrawal->amount, 0, ',', '.') . ' telah disetujui.',
             'withdrawal'
@@ -90,9 +90,9 @@ try {
         // Reject withdrawal
         $withdrawal->reject($notes ?? 'Withdrawal rejected');
         
-        // Notification
+        // Notification to the user who requested the withdrawal
         \App\Models\Notification::createNotification(
-            $userId,
+            $withdrawal->user_id,
             'Penarikan Ditolak',
             'Penarikan dana sebesar Rp ' . number_format($withdrawal->amount, 0, ',', '.') . ' ditolak. Catatan: ' . ($notes ?? '-'),
             'withdrawal'

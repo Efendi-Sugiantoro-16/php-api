@@ -1,0 +1,29 @@
+--- User Badge Distribution Report ---
+User: [1] Efendi Sugiantoro (efendisugiantoro14@gmail.com)
+Badges Earned (9):
+  - First Saver (Earned at: 2026-01-31 05:28:33)
+  - Goal Achiever (Earned at: 2026-01-31 05:28:33)
+  - Triple Victory (Earned at: 2026-01-31 05:28:33)
+  - Hundred Thousander (Earned at: 2026-01-31 05:28:33)
+  - Half Millionaire (Earned at: 2026-01-31 05:28:33)
+  - Millionaire (Earned at: 2026-01-31 05:28:33)
+  - Multi Millionaire (Earned at: 2026-01-31 05:28:33)
+  - Regular Saver (Earned at: 2026-01-31 05:28:33)
+  - Multi Tasker (Earned at: 2026-01-31 15:43:05)
+--------------------------------------
+User: [2] indra (indra12@gmail.com)
+Badges Earned (5):
+  - First Saver (Earned at: 2026-01-31 16:54:24)
+  - Goal Achiever (Earned at: 2026-01-31 16:54:24)
+  - Hundred Thousander (Earned at: 2026-01-31 16:54:24)
+  - Half Millionaire (Earned at: 2026-01-31 16:54:24)
+  - Millionaire (Earned at: 2026-01-31 16:54:24)
+--------------------------------------
+User: [3] User 1 (user1@test.com)
+Badges Earned (1):
+  - First Saver (Earned at: 2026-01-31 17:24:29)
+--------------------------------------
+User: [4] User 2 (user2@test.com)
+Badges Earned (0):
+  (None)
+--------------------------------------

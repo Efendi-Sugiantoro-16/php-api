@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use App\Models\Withdrawal;
 use App\Middleware\Auth;
 use App\Helpers\Response;
+use Illuminate\Database\Capsule\Manager as Capsule;
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     Response::error('Method not allowed', 405);
@@ -232,6 +233,49 @@ try {
         }
     }
     
+    // ===== USER BADGES =====
+    $userBadges = [];
+    
+    try {
+        // Get PDO connection from Capsule
+        $pdo = Capsule::connection()->getPdo();
+        
+        // Fetch user badges using PDO
+        $stmt = $pdo->prepare("
+            SELECT 
+                b.id,
+                b.code,
+                b.name,
+                b.description,
+                b.icon,
+                b.requirement_type,
+                ub.earned_at,
+                ub.progress_value
+            FROM user_badges ub
+            JOIN badges b ON ub.badge_id = b.id
+            WHERE ub.user_id = ?
+            ORDER BY ub.earned_at DESC
+        ");
+        $stmt->execute([$userId]);
+        $badges = $stmt->fetchAll(PDO::FETCH_OBJ);
+        
+        foreach ($badges as $badge) {
+            $userBadges[] = [
+                'id' => $badge->id,
+                'code' => $badge->code,
+                'name' => $badge->name,
+                'description' => $badge->description,
+                'icon' => $badge->icon,
+                'requirement_type' => $badge->requirement_type,
+                'earned_at' => $badge->earned_at,
+                'progress_value' => $badge->progress_value
+            ];
+        }
+    } catch (Exception $e) {
+        // Badge system might not be set up yet, continue without errors
+        error_log("Badge fetch error in report: " . $e->getMessage());
+    }
+    
     // ===== RESPONSE =====
     $report = [
         'report_date' => date('Y-m-d H:i:s'),
@@ -252,9 +296,26 @@ try {
             'total_withdrawals' => $totalWithdrawals
         ],
         'goals' => $goalDetails,
+        'transactions' => Transaction::whereHas('goal', function($q) use ($userId) {
+                $q->where('user_id', $userId);
+            })
+            ->whereBetween('transaction_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->orderBy('transaction_date', 'desc')
+            ->get()
+            ->map(function($t) {
+                return [
+                    'id' => $t->id,
+                    'goal_name' => $t->goal->name,
+                    'amount' => (float) $t->amount,
+                    'method' => $t->method,
+                    'description' => $t->description,
+                    'date' => $t->transaction_date->format('Y-m-d H:i:s')
+                ];
+            }),
         'achievements' => $achievements,
         'tips' => $tips,
-        'monthly_breakdown' => $monthlyBreakdown
+        'monthly_breakdown' => $monthlyBreakdown,
+        'badges' => $userBadges
     ];
     
     Response::success('Report generated successfully', $report);
