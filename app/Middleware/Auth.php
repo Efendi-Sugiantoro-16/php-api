@@ -9,12 +9,21 @@ use App\Helpers\Response;
 class Auth {
     public static function authenticate() {
         $headers = getallheaders();
-        
-        if (!isset($headers['Authorization'])) {
-            Response::error('Authorization header missing', 401);
+        $authHeader = null;
+
+        if (isset($headers['Authorization'])) {
+            $authHeader = $headers['Authorization'];
+        } elseif (isset($headers['authorization'])) {
+            $authHeader = $headers['authorization'];
+        } elseif (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
+        } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+            $authHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
         }
         
-        $authHeader = $headers['Authorization'];
+        if (!$authHeader) {
+            Response::error('Authorization header missing', 401);
+        }
         
         // Expected format: Bearer <token>
         if (strpos($authHeader, 'Bearer ') !== 0) {

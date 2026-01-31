@@ -58,6 +58,11 @@ if ($uri === '/' || $uri === '/index.php') {
 // Check if file exists based on URI
 $filePath = __DIR__ . $uri . '.php';
 
+// If direct file doesn't exist, try with /index.php
+if (!file_exists($filePath)) {
+    $filePath = __DIR__ . $uri . '/index.php';
+}
+
 if (file_exists($filePath)) {
     // Determine if we need to load bootstrap first? 
     // The individual files already load bootstrap via relative path, so simply require matching file.
@@ -72,6 +77,6 @@ if (file_exists($filePath)) {
     
     // Return JSON 404
     http_response_code(404);
-    echo json_encode(['success' => false, 'message' => 'Endpoint not found']);
+    echo json_encode(['success' => false, 'message' => 'Endpoint not found: ' . $uri]);
 }
 ?>

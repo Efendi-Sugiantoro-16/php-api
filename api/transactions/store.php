@@ -39,6 +39,11 @@ try {
         Response::error('Goal not found or access denied', 404);
     }
 
+    // Validate: Cannot deposit to a completed goal
+    if ((float)$goal->current_amount >= (float)$goal->target_amount) {
+        Response::error('This goal has already been completed and cannot accept more deposits.', 400);
+    }
+
     // Validate method based on goal type
     // If goal type is undefined/null (old goals), default to 'digital' constraint or allow loose?
     // Let's assume default is 'digital' from migration.
@@ -48,11 +53,11 @@ try {
     $goalType = $goal->type ?? 'digital'; // Fallback
     
     if ($goalType === 'cash' && $method !== 'manual') {
-        Response::error('Goal Tunai hanya bisa diisi dengan cara Manual (Cash).', 400);
+        Response::error('Cash Goal can only be filled manually (Cash).', 400);
     }
     
     if ($goalType === 'digital' && $method === 'manual') {
-        Response::error('Goal Digital tidak bisa diisi dengan Manual. Gunakan E-Wallet atau Saldo Akun.', 400);
+        Response::error('Digital Goal cannot be filled manually. Use E-Wallet or Account Balance.', 400);
     }
     
     // Create transaction
@@ -80,8 +85,8 @@ try {
         if ($transaction) {
             \App\Models\Notification::createNotification(
                 $userId,
-                'Tabungan Berhasil',
-                'Tabungan sebesar Rp ' . number_format($amount, 0, ',', '.') . ' berhasil ditambahkan via ' . ucfirst($method) . '.',
+                'Deposit Successful',
+                'A deposit of Rp ' . number_format($amount, 0, ',', '.') . ' has been successfully added via ' . ucfirst($method) . '.',
                 'deposit'
             );
         }
@@ -99,11 +104,11 @@ try {
     }
     
     // Update notification message if goal completed
-    $notificationMessage = 'Tabungan sebesar Rp ' . number_format($amount, 0, ',', '.') . ' berhasil ditambahkan via ' . ucfirst($method) . '.';
+    $notificationMessage = 'A deposit of Rp ' . number_format($amount, 0, ',', '.') . ' has been successfully added via ' . ucfirst($method) . '.';
     if ($result['completed']) {
-        $notificationMessage = 'Selamat! Goal "' . $goal->name . '" telah tercapai! Tabungan sebesar Rp ' . number_format($result['deposited_amount'], 0, ',', '.') . ' ditambahkan.';
+        $notificationMessage = 'Congratulations! The goal "' . $goal->name . '" has been reached! A deposit of Rp ' . number_format($result['deposited_amount'], 0, ',', '.') . ' was added.';
         if ($result['overflow_amount'] > 0) {
-            $notificationMessage .= ' Anda memiliki sisa Rp ' . number_format($result['overflow_amount'], 0, ',', '.') . ' untuk dialokasikan.';
+            $notificationMessage .= ' You have a remaining balance of Rp ' . number_format($result['overflow_amount'], 0, ',', '.') . ' to be allocated.';
         }
     }
     
@@ -112,7 +117,7 @@ try {
         if ($transaction) {
             \App\Models\Notification::createNotification(
                 $userId,
-                $result['completed'] ? 'Goal Tercapai!' : 'Tabungan Berhasil',
+                $result['completed'] ? 'Goal Reached!' : 'Deposit Successful',
                 $notificationMessage,
                 'deposit'
             );

@@ -14,7 +14,7 @@ class Withdrawal extends Model {
     const STATUS_REJECTED = 'rejected';
     
     // Valid methods
-    const VALID_METHODS = ['dana', 'gopay', 'bank_transfer', 'ovo', 'shopeepay', 'manual', 'balance'];
+    const VALID_METHODS = ['dana', 'gopay', 'bank_transfer', 'ovo', 'shopeepay', 'manual', 'balance', 'pospay'];
     
     protected $fillable = [
         'user_id',

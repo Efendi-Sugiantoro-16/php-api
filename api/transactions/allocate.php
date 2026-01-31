@@ -96,7 +96,7 @@ try {
             'goal_id' => $goalId,
             'amount' => $amount,
             'method' => 'allocation',
-            'description' => 'Alokasi dari overflow',
+            'description' => 'Allocation from overflow',
             'transaction_date' => \Carbon\Carbon::now()
         ]);
         
@@ -107,8 +107,8 @@ try {
         try {
             \App\Models\Notification::createNotification(
                 $userId,
-                $result['completed'] ? 'Goal Tercapai!' : 'Alokasi Berhasil',
-                'Alokasi sebesar Rp ' . number_format($amount, 0, ',', '.') . ' ke goal "' . $goal->name . '" berhasil.',
+                $result['completed'] ? 'Goal Reached!' : 'Allocation Successful',
+                'An allocation of Rp ' . number_format($amount, 0, ',', '.') . ' to goal "' . $goal->name . '" was successful.',
                 'deposit'
             );
         } catch (\Exception $e) {

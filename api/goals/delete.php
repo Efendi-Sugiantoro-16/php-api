@@ -30,6 +30,18 @@ try {
         Response::error('Goal not found or access denied', 404);
     }
     
+    // BUSINESS RULE: Digital goals cannot be deleted until completed
+    // This ensures financial integrity for e-wallet based goals
+    $goalType = $goal->type ?? 'digital';
+    $isCompleted = (float)$goal->current_amount >= (float)$goal->target_amount;
+    
+    if ($goalType === 'digital' && !$isCompleted) {
+        Response::error(
+            'Digital goals (e-wallet) cannot be deleted until completed. This maintains financial integrity of your digital savings. Cash goals can be deleted anytime.',
+            400
+        );
+    }
+    
     // Delete goal (cascade will delete transactions via database)
     $goal->delete();
     
