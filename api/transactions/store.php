@@ -118,7 +118,7 @@ try {
             );
         }
     } catch (\Exception $e) {
-        // Ignore notification errors
+        error_log("Notification Create Error: " . $e->getMessage());
     }
     
     Response::success('Transaction created successfully', [
