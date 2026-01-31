@@ -78,7 +78,7 @@ class Withdrawal extends Model {
     public static function processDelayedApprovals($userId = null) {
         // Build query
         $query = self::where('status', self::STATUS_PENDING)
-                     ->where('created_at', '<', \Carbon\Carbon::now()->subSeconds(30));
+                     ->where('created_at', '<', \Carbon\Carbon::now()->subSeconds(5));
         
         if ($userId) {
             $query->where('user_id', $userId);
