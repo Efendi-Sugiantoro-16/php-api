@@ -22,6 +22,20 @@ try {
     $totalGoals = $goals->count();
     $totalSaved = $goals->sum('current_amount');
     $totalTarget = $goals->sum('target_amount');
+    
+    // ✅ NEW: Calculate by goal type
+    $cashGoals = $goals->filter(function($goal) {
+        return ($goal->type ?? 'digital') === 'cash';
+    });
+    $digitalGoals = $goals->filter(function($goal) {
+        return ($goal->type ?? 'digital') === 'digital';
+    });
+    
+    $totalCash = $cashGoals->sum('current_amount');
+    $totalDigital = $digitalGoals->sum('current_amount');
+    $cashGoalsCount = $cashGoals->count();
+    $digitalGoalsCount = $digitalGoals->count();
+    
     $completedGoals = $goals->filter(function($goal) {
         return $goal->current_amount >= $goal->target_amount;
     })->count();
@@ -54,6 +68,11 @@ try {
         'total_goals' => $totalGoals,
         'total_saved' => (float) $totalSaved,
         'total_target' => (float) $totalTarget,
+        // ✅ NEW: Separate totals by type
+        'total_cash' => (float) $totalCash,
+        'total_digital' => (float) $totalDigital,
+        'cash_goals_count' => $cashGoalsCount,
+        'digital_goals_count' => $digitalGoalsCount,
         'completed_goals' => $completedGoals,
         'active_goals' => $activeGoals,
         'overall_progress' => $overallProgress,
