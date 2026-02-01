@@ -50,12 +50,14 @@ try {
         
         $goalType = $goal->type ?? 'digital';
         
-        // Strict Method constraints
-        if ($goalType === 'cash' && $method !== 'manual') {
-             Response::error('Cash Goal can only be withdrawn manually (Cash Pickup).', 400);
+        // ✅ NEW RULE: Cash goals cannot be withdrawn through app
+        if ($goalType === 'cash') {
+            Response::error('Cash goals cannot be withdrawn through the app. Please withdraw manually from your physical piggy bank.', 400);
         }
+        
+        // Digital goals cannot use manual method
         if ($goalType === 'digital' && $method === 'manual') {
-             Response::error('Digital Goal cannot be withdrawn manually. Use E-Wallet Transfer.', 400);
+             Response::error('Digital goals cannot be withdrawn manually. Use E-Wallet or Bank Transfer.', 400);
         }
         
         // Validate sufficient balance in THIS SPECIFIC GOAL
