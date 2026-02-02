@@ -19,7 +19,7 @@ $goalId = $_GET['goal_id'] ?? null;
 
 try {
     $query = Goal::where('user_id', $userId);
-    
+
     if ($goalId) {
         $query->where('id', $goalId);
     }
@@ -30,13 +30,13 @@ try {
     foreach ($goals as $goal) {
         // Get transactions for this goal
         $transactions = Transaction::where('goal_id', $goal->id)
-                                 ->orderBy('transaction_date', 'asc')
-                                 ->get();
-        
+            ->orderBy('transaction_date', 'asc')
+            ->get();
+
         $totalSaved = (float) $goal->current_amount;
         $targetAmount = (float) $goal->target_amount;
         $remainingAmount = max(0, $targetAmount - $totalSaved);
-        
+
         if ($goal->isCompleted()) {
             $forecasts[] = [
                 'goal_id' => $goal->id,
@@ -69,15 +69,15 @@ try {
 
         $daysToComplete = ceil($remainingAmount / $avgDailySavings);
         $predictedDate = Carbon::now()->addDays($daysToComplete);
-        
+
         // Determine Status based on Deadline
         $status = 'on_track';
         $description = 'Kamu dalam jalur yang benar!';
-        
+
         if ($goal->deadline) {
             $deadline = Carbon::parse($goal->deadline);
             $daysToDeadline = Carbon::now()->diffInDays($deadline, false);
-            
+
             if ($daysToDeadline < 0) {
                 $status = 'overdue';
                 $description = 'Deadline sudah terlewati. Ayo kejar targetmu!';

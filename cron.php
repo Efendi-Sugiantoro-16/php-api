@@ -20,13 +20,13 @@ if ($inputSecret !== $secret) {
 // 2. Execute Auto-Approval Logic (Global)
 try {
     $count = Withdrawal::processDelayedApprovals(null); // null = check ALL users
-    
+
     echo json_encode([
         'status' => 'success',
         'processed_count' => $count,
         'timestamp' => date('Y-m-d H:i:s')
     ]);
-    
+
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([

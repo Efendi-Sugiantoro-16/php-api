@@ -41,25 +41,25 @@ try {
     if ($goalId) {
         // Validate goal exists and belongs to user
         $goal = Goal::where('id', $goalId)
-                    ->where('user_id', $userId)
-                    ->first();
-        
+            ->where('user_id', $userId)
+            ->first();
+
         if (!$goal) {
             Response::error('Goal not found or does not belong to you', 404);
         }
-        
+
         $goalType = $goal->type ?? 'digital';
-        
+
         // ✅ NEW RULE: Cash goals cannot be withdrawn through app
         if ($goalType === 'cash') {
             Response::error('Cash goals cannot be withdrawn through the app. Please withdraw manually from your physical piggy bank.', 400);
         }
-        
+
         // Digital goals cannot use manual method
         if ($goalType === 'digital' && $method === 'manual') {
-             Response::error('Digital goals cannot be withdrawn manually. Use E-Wallet or Bank Transfer.', 400);
+            Response::error('Digital goals cannot be withdrawn manually. Use E-Wallet or Bank Transfer.', 400);
         }
-        
+
         // Validate sufficient balance in THIS SPECIFIC GOAL
         if ($goal->current_amount < $amount) {
             Response::error(
@@ -71,14 +71,14 @@ try {
         // Withdraw from AVAILABLE BALANCE
         // Balance is considered DIGITAL. Can only withdraw via Transfer.
         if ($method === 'manual') {
-             // Exception: "Ambil Tunai" from Balance? 
-             // Logic: Available Balance comes from Digital Overflow OR Manual Overflow (which is "kept" as cash, so never hits balance?)
-             // WAIT. Manual Overflow logic: "Ambil Kembalian" => Money in hand. It DOES NOT hit balance.
-             // So Available Balance contains ONLY Digital money.
-             // So cannot withdraw 'manual' from Balance.
-             Response::error('Account Balance (Digital) cannot be withdrawn manually. Use E-Wallet Transfer.', 400);
+            // Exception: "Ambil Tunai" from Balance? 
+            // Logic: Available Balance comes from Digital Overflow OR Manual Overflow (which is "kept" as cash, so never hits balance?)
+            // WAIT. Manual Overflow logic: "Ambil Kembalian" => Money in hand. It DOES NOT hit balance.
+            // So Available Balance contains ONLY Digital money.
+            // So cannot withdraw 'manual' from Balance.
+            Response::error('Account Balance (Digital) cannot be withdrawn manually. Use E-Wallet Transfer.', 400);
         }
-        
+
         $user = \App\Models\User::find($userId);
         if ($user->available_balance < $amount) {
             Response::error(
@@ -90,7 +90,7 @@ try {
         // Usually upon request to prevent double spending.
         $user->subtractAvailableBalance($amount);
     }
-    
+
     // Create withdrawal request with goal_id
     $withdrawal = Withdrawal::create([
         'user_id' => $userId,
@@ -101,7 +101,7 @@ try {
         'status' => Withdrawal::STATUS_PENDING,
         'notes' => $notes
     ]);
-    
+
     Response::success('Withdrawal request submitted successfully', [
         'id' => $withdrawal->id,
         'goal_id' => $withdrawal->goal_id,
@@ -114,7 +114,7 @@ try {
         'goal_balance' => $goalId ? (float) $goal->current_amount : (float) $user->available_balance,
         'created_at' => $withdrawal->created_at->toDateTimeString()
     ], 201);
-    
+
 } catch (Exception $e) {
     Response::error('Failed to create withdrawal request: ' . $e->getMessage(), 500);
 }

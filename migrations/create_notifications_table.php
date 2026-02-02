@@ -17,7 +17,7 @@ try {
             $table->string('type', 50)->default('info'); // 'deposit', 'withdrawal', 'info'
             $table->boolean('is_read')->default(false);
             $table->timestamp('created_at')->useCurrent();
-            
+
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->index('user_id');
             $table->index('is_read');
@@ -26,9 +26,9 @@ try {
     } else {
         echo "⚠️ Table 'notifications' already exists.\n";
     }
-    
+
     echo "\n=== Migration Complete ===\n";
-    
+
 } catch (Exception $e) {
     echo "❌ Error: " . $e->getMessage() . "\n";
     exit(1);

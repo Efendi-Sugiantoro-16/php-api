@@ -17,24 +17,24 @@ $userId = Auth::authenticate();
 
 try {
     $awardedBadges = [];
-    
+
     // Get user's existing badges
     $existingBadgeIds = UserBadge::where('user_id', $userId)
         ->pluck('badge_id')
         ->toArray();
-    
+
     // Get all badges
     $allBadges = Badge::all();
-    
+
     // Calculate user stats using Helper
     $stats = BadgeHelper::calculateUserStats($userId);
-    
+
     foreach ($allBadges as $badge) {
         // Skip if already owned
         if (in_array($badge->id, $existingBadgeIds)) {
             continue;
         }
-        
+
         // Check if badge should be awarded
         if (shouldAwardBadge($badge, $stats)) {
             // Award badge
@@ -51,7 +51,7 @@ try {
                 "Selamat! Kamu mendapatkan badge '" . $badge->name . "' karena " . $badge->description,
                 'badge_earned'
             );
-            
+
             $awardedBadges[] = [
                 'id' => $badge->id,
                 'code' => $badge->code,
@@ -61,13 +61,13 @@ try {
             ];
         }
     }
-    
+
     Response::success('Badge check completed', [
         'new_badges' => $awardedBadges,
         'count' => count($awardedBadges),
         'stats' => $stats
     ]);
-    
+
 } catch (Exception $e) {
     Response::error($e->getMessage(), 500);
 }
@@ -75,30 +75,31 @@ try {
 /**
  * Check if badge should be awarded based on stats
  */
-function shouldAwardBadge($badge, $stats) {
+function shouldAwardBadge($badge, $stats)
+{
     switch ($badge->requirement_type) {
         case 'first_deposit':
             return $stats['deposit_count'] >= 1;
-            
+
         case 'streak':
-            return $stats['current_streak'] >= $badge->requirement_value 
+            return $stats['current_streak'] >= $badge->requirement_value
                 || $stats['longest_streak'] >= $badge->requirement_value;
-            
+
         case 'goal_complete':
             return $stats['completed_goals'] >= $badge->requirement_value;
-            
+
         case 'total_saved':
             return $stats['total_saved'] >= $badge->requirement_value;
-            
+
         case 'active_goals':
             return $stats['active_goals'] >= $badge->requirement_value;
-            
+
         case 'deposit_count':
             return $stats['deposit_count'] >= $badge->requirement_value;
-            
+
         case 'early_complete':
             return $stats['early_complete'] >= $badge->requirement_value;
-            
+
         default:
             return false;
     }

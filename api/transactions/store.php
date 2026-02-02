@@ -32,15 +32,15 @@ if ($amount <= 0) {
 try {
     // Check if goal exists and belongs to user
     $goal = Goal::where('id', $goalId)
-                ->where('user_id', $userId)
-                ->first();
-    
+        ->where('user_id', $userId)
+        ->first();
+
     if (!$goal) {
         Response::error('Goal not found or access denied', 404);
     }
 
     // Validate: Cannot deposit to a completed goal
-    if ((float)$goal->current_amount >= (float)$goal->target_amount) {
+    if ((float) $goal->current_amount >= (float) $goal->target_amount) {
         Response::error('This goal has already been completed and cannot accept more deposits.', 400);
     }
 
@@ -49,17 +49,17 @@ try {
     // Let's assume default is 'digital' from migration.
     // However, the model doesn't automatically cast enum default on read unless DB enforces it.
     // DB default is set.
-    
+
     $goalType = $goal->type ?? 'digital'; // Fallback
-    
+
     if ($goalType === 'cash' && $method !== 'manual') {
         Response::error('Cash Goal can only be filled manually (Cash).', 400);
     }
-    
+
     if ($goalType === 'digital' && $method === 'manual') {
         Response::error('Digital Goal cannot be filled manually. Use E-Wallet or Account Balance.', 400);
     }
-    
+
     // Create transaction
     $transaction = Transaction::create([
         'goal_id' => $goalId,
@@ -79,7 +79,7 @@ try {
         }
         $user->subtractAvailableBalance($amount);
     }
-    
+
     // Create Notification
     try {
         if ($transaction) {
@@ -93,16 +93,16 @@ try {
     } catch (\Exception $e) {
         // Ignore notification errors
     }
-    
+
     // Update goal amount and get overflow info
     $result = $goal->addAmount($amount);
-    
+
     // Safety: Automatically add overflow to Available Balance
     if ($result['overflow_amount'] > 0) {
         $user = \App\Models\User::find($userId);
         $user->addAvailableBalance($result['overflow_amount']);
     }
-    
+
     // Update notification message if goal completed
     $notificationMessage = 'A deposit of Rp ' . number_format($amount, 0, ',', '.') . ' has been successfully added via ' . ucfirst($method) . '.';
     if ($result['completed']) {
@@ -111,7 +111,7 @@ try {
             $notificationMessage .= ' You have a remaining balance of Rp ' . number_format($result['overflow_amount'], 0, ',', '.') . ' to be allocated.';
         }
     }
-    
+
     // Create Notification
     try {
         if ($transaction) {
@@ -125,7 +125,7 @@ try {
     } catch (\Exception $e) {
         error_log("Notification Create Error: " . $e->getMessage());
     }
-    
+
     Response::success('Transaction created successfully', [
         'id' => $transaction->id,
         'goal_id' => $transaction->goal_id,
@@ -138,7 +138,7 @@ try {
         'deposited_amount' => (float) $result['deposited_amount'],
         'overflow_amount' => (float) $result['overflow_amount']
     ], 201);
-    
+
 } catch (Exception $e) {
     Response::error('Failed to create transaction: ' . $e->getMessage(), 500);
 }

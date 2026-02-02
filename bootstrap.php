@@ -35,22 +35,23 @@ $capsule->setAsGlobal();
 $capsule->bootEloquent();
 
 // Helper function untuk mengakses env
-function env($key, $default = null) {
+function env($key, $default = null)
+{
     $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
-    
+
     if ($value === false) {
         return $default;
     }
-    
+
     // Convert string boolean to actual boolean
     if (in_array(strtolower($value), ['true', '(true)'])) {
         return true;
     }
-    
+
     if (in_array(strtolower($value), ['false', '(false)'])) {
         return false;
     }
-    
+
     return $value;
 }
 

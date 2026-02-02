@@ -25,31 +25,31 @@ if (!$goalId) {
 try {
     // Check if goal belongs to user
     $goal = Goal::where('id', $goalId)
-                ->where('user_id', $userId)
-                ->first();
-    
+        ->where('user_id', $userId)
+        ->first();
+
     if (!$goal) {
         Response::error('Goal not found or access denied', 404);
     }
-    
+
     // Get transactions
     $transactions = Transaction::where('goal_id', $goalId)
-                              ->orderBy('transaction_date', 'desc')
-                              ->orderBy('created_at', 'desc')
-                              ->get()
-                              ->map(function($transaction) {
-                                  return [
-                                      'id' => $transaction->id,
-                                      'goal_id' => $transaction->goal_id,
-                                      'amount' => (float) $transaction->amount,
-                                      'description' => $transaction->description,
-                                      'transaction_date' => $transaction->transaction_date->toDateTimeString(),
-                                      'created_at' => $transaction->created_at->toDateTimeString()
-                                  ];
-                              });
-    
+        ->orderBy('transaction_date', 'desc')
+        ->orderBy('created_at', 'desc')
+        ->get()
+        ->map(function ($transaction) {
+            return [
+                'id' => $transaction->id,
+                'goal_id' => $transaction->goal_id,
+                'amount' => (float) $transaction->amount,
+                'description' => $transaction->description,
+                'transaction_date' => $transaction->transaction_date->toDateTimeString(),
+                'created_at' => $transaction->created_at->toDateTimeString()
+            ];
+        });
+
     Response::success('Transactions retrieved successfully', $transactions->toArray());
-    
+
 } catch (Exception $e) {
     Response::error('Failed to retrieve transactions: ' . $e->getMessage(), 500);
 }

@@ -3,13 +3,15 @@
 
 namespace App\Helpers;
 
-class FCMHelper {
+class FCMHelper
+{
     private static $serviceAccountPath = __DIR__ . '/../../service-account.json';
     private static $accessToken = null;
     private static $tokenExpiry = 0;
 
     // Get Access Token using Service Account (Pure PHP - No Composer)
-    private static function getAccessToken() {
+    private static function getAccessToken()
+    {
         if (self::$accessToken && time() < self::$tokenExpiry) {
             return self::$accessToken;
         }
@@ -79,9 +81,11 @@ class FCMHelper {
     }
 
     // Send Notification
-    public static function sendToTopic($topic, $title, $body, $data = []) {
+    public static function sendToTopic($topic, $title, $body, $data = [])
+    {
         $accessToken = self::getAccessToken();
-        if (!$accessToken) return false;
+        if (!$accessToken)
+            return false;
 
         // Extract Project ID (Hack: read from token payload or reload using same logic)
         // Better: Use a property. For now, let's reload safely.
@@ -93,8 +97,9 @@ class FCMHelper {
             $cred = json_decode(file_get_contents(self::$serviceAccountPath), true);
             $projectId = $cred['project_id'];
         }
-        
-        if (empty($projectId)) return false;
+
+        if (empty($projectId))
+            return false;
 
         $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
 
@@ -118,7 +123,7 @@ class FCMHelper {
         ]);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($message));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        
+
         $result = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
@@ -126,7 +131,7 @@ class FCMHelper {
         if ($httpCode >= 200 && $httpCode < 300) {
             return true;
         }
-        
+
         error_log("FCM Send Error ($httpCode): " . $result);
         return false;
     }

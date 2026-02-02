@@ -5,9 +5,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Notification extends Model {
+class Notification extends Model
+{
     protected $table = 'notifications';
-    
+
     protected $fillable = [
         'user_id',
         'title',
@@ -15,21 +16,23 @@ class Notification extends Model {
         'type',
         'is_read'
     ];
-    
+
     protected $casts = [
         'is_read' => 'boolean',
         'created_at' => 'datetime'
     ];
-    
+
     public $timestamps = false; // We only use created_at, handled by DB default
-    
+
     // Relationships
-    public function user() {
+    public function user()
+    {
         return $this->belongsTo(User::class);
     }
-    
+
     // Helper to create notification
-    public static function createNotification($userId, $title, $message, $type = 'info') {
+    public static function createNotification($userId, $title, $message, $type = 'info')
+    {
         // 1. Save to Database
         $notif = self::create([
             'user_id' => $userId,

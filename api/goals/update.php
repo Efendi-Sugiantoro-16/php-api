@@ -32,13 +32,13 @@ if ($targetAmount <= 0) {
 try {
     // Find goal and check ownership
     $goal = Goal::where('id', $goalId)
-                ->where('user_id', $userId)
-                ->first();
-    
+        ->where('user_id', $userId)
+        ->first();
+
     if (!$goal) {
         Response::error('Goal not found or access denied', 404);
     }
-    
+
     // Update goal
     $goal->update([
         'name' => $name,
@@ -46,7 +46,7 @@ try {
         'deadline' => $deadline,
         'description' => $description
     ]);
-    
+
     Response::success('Goal updated successfully', [
         'id' => $goal->id,
         'name' => $goal->name,
@@ -56,7 +56,7 @@ try {
         'description' => $goal->description,
         'updated_at' => $goal->updated_at->toDateTimeString()
     ]);
-    
+
 } catch (Exception $e) {
     Response::error('Failed to update goal: ' . $e->getMessage(), 500);
 }

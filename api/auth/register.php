@@ -35,20 +35,20 @@ try {
     if (User::where('email', $email)->exists()) {
         Response::error('Email already registered', 409);
     }
-    
+
     // Create user
     $user = User::create([
         'name' => $name,
         'email' => $email,
         'password' => $password // Will be hashed automatically by model
     ]);
-    
+
     Response::success('Registration successful', [
         'user_id' => $user->id,
         'name' => $user->name,
         'email' => $user->email
     ], 201);
-    
+
 } catch (Exception $e) {
     Response::error('Registration failed: ' . $e->getMessage(), 500);
 }

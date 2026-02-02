@@ -38,7 +38,7 @@ try {
         'description' => $description,
         'type' => $type
     ]);
-    
+
     Response::success('Goal created successfully', [
         'id' => $goal->id,
         'name' => $goal->name,
@@ -49,7 +49,7 @@ try {
         'type' => $goal->type,
         'created_at' => $goal->created_at->toDateTimeString()
     ], 201);
-    
+
 } catch (Exception $e) {
     Response::error('Failed to create goal: ' . $e->getMessage(), 500);
 }

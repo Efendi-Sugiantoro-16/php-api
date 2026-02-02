@@ -48,9 +48,9 @@ try {
             'deadline' => $goalData['deadline'],
             'description' => $goalData['description']
         ]);
-        
+
         echo "✓ Goal created: {$goal->name}\n";
-        
+
         // Add some transactions for each goal
         $transactionCount = rand(2, 5);
         for ($i = 0; $i < $transactionCount; $i++) {
@@ -62,7 +62,7 @@ try {
                 'transaction_date' => date('Y-m-d H:i:s', strtotime('-' . rand(1, 30) . ' days'))
             ]);
         }
-        
+
         echo "  ✓ Added {$transactionCount} transactions\n";
     }
 

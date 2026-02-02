@@ -21,20 +21,20 @@ try {
 
     // Build query
     $query = Withdrawal::where('user_id', $userId);
-    
+
     // Filter by status if provided
     if (isset($_GET['status']) && !empty($_GET['status'])) {
         $status = strtolower(trim($_GET['status']));
         $validStatuses = ['pending', 'approved', 'rejected'];
-        
+
         if (in_array($status, $validStatuses)) {
             $query->where('status', $status);
         }
     }
-    
+
     // Get withdrawals ordered by created_at desc
     $withdrawals = $query->orderBy('created_at', 'desc')->get();
-    
+
     // Format response
     $formattedWithdrawals = [];
     foreach ($withdrawals as $withdrawal) {
@@ -44,7 +44,7 @@ try {
             $goal = \App\Models\Goal::find($withdrawal->goal_id);
             $goalName = $goal ? $goal->name : null;
         }
-        
+
         $formattedWithdrawals[] = [
             'id' => $withdrawal->id,
             'goal_id' => $withdrawal->goal_id,
@@ -58,7 +58,7 @@ try {
             'updated_at' => $withdrawal->updated_at ? $withdrawal->updated_at->toDateTimeString() : null
         ];
     }
-    
+
     // Calculate summary
     $summary = [
         'total_requests' => count($formattedWithdrawals),
@@ -66,12 +66,12 @@ try {
         'approved_count' => Withdrawal::where('user_id', $userId)->where('status', 'approved')->count(),
         'rejected_count' => Withdrawal::where('user_id', $userId)->where('status', 'rejected')->count()
     ];
-    
+
     Response::success('Withdrawals retrieved successfully', [
         'summary' => $summary,
         'withdrawals' => $formattedWithdrawals
     ]);
-    
+
 } catch (Exception $e) {
     Response::error('Failed to retrieve withdrawals: ' . $e->getMessage(), 500);
 }

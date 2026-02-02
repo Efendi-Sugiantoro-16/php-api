@@ -18,10 +18,10 @@ $userId = Auth::authenticate();
 try {
     // Get notifications ordered by created_at desc
     $notifications = Notification::where('user_id', $userId)
-                                 ->orderBy('created_at', 'desc')
-                                 ->take(50) // Limit to last 50
-                                 ->get();
-    
+        ->orderBy('created_at', 'desc')
+        ->take(50) // Limit to last 50
+        ->get();
+
     // Format response
     $formattedNotifications = [];
     foreach ($notifications as $notif) {
@@ -34,9 +34,9 @@ try {
             'created_at' => $notif->created_at ? $notif->created_at->format('Y-m-d H:i:s') : null
         ];
     }
-    
+
     Response::success('Notifications retrieved successfully', $formattedNotifications);
-    
+
 } catch (Exception $e) {
     Response::error('Failed to retrieve notifications: ' . $e->getMessage(), 500);
 }

@@ -16,9 +16,9 @@ try {
             echo "⚠️ Column 'method' already exists.\n";
         }
     });
-    
+
     echo "\n=== Migration Complete ===\n";
-    
+
 } catch (Exception $e) {
     echo "❌ Error: " . $e->getMessage() . "\n";
     exit(1);

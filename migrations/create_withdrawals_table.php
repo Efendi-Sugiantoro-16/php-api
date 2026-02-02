@@ -10,7 +10,7 @@ echo "=== Creating Withdrawals Table ===\n\n";
 
 try {
     $schema = Capsule::schema();
-    
+
     // Check if table already exists
     if ($schema->hasTable('withdrawals')) {
         echo "Table 'withdrawals' already exists. Skipping...\n";
@@ -26,17 +26,17 @@ try {
             $table->text('notes')->nullable();
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->nullable();
-            
+
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->index('user_id', 'idx_withdrawals_user_id');
             $table->index('status', 'idx_withdrawals_status');
         });
-        
+
         echo "✅ Table 'withdrawals' created successfully!\n";
     }
-    
+
     echo "\n=== Migration Complete ===\n";
-    
+
 } catch (Exception $e) {
     echo "❌ Error: " . $e->getMessage() . "\n";
     exit(1);

@@ -8,7 +8,7 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 
 try {
     $pdo = Capsule::connection()->getPdo();
-    
+
     // Create badges table
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS badges (
@@ -23,7 +23,7 @@ try {
         )
     ");
     echo "✅ Table 'badges' created successfully\n";
-    
+
     // Create user_badges table
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS user_badges (
@@ -37,7 +37,7 @@ try {
         )
     ");
     echo "✅ Table 'user_badges' created successfully\n";
-    
+
     // Seed default badges
     $badges = [
         ['first_saver', 'First Saver', 'Menabung untuk pertama kali', '🌟', 'first_deposit', 1],
@@ -57,25 +57,25 @@ try {
         ['deposit_50', 'Super Saver', 'Melakukan 50 kali deposit', '📈', 'deposit_count', 50],
         ['early_bird', 'Early Bird', 'Menyelesaikan goal sebelum deadline', '🐦', 'early_complete', 1],
     ];
-    
+
     $stmt = $pdo->prepare("
         INSERT INTO badges (code, name, description, icon, requirement_type, requirement_value)
         VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT (code) DO NOTHING
     ");
-    
+
     foreach ($badges as $badge) {
         $stmt->execute($badge);
     }
     echo "✅ Seeded " . count($badges) . " default badges\n";
-    
+
     // Create indexes
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_user_badges_user_id ON user_badges(user_id)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_user_badges_badge_id ON user_badges(badge_id)");
     echo "✅ Indexes created successfully\n";
-    
+
     echo "\n🎉 Migration completed successfully!\n";
-    
+
 } catch (Exception $e) {
     echo "❌ Migration failed: " . $e->getMessage() . "\n";
 }

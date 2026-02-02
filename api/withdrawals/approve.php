@@ -33,42 +33,43 @@ if (!in_array($action, ['approve', 'reject'])) {
 try {
     // Find withdrawal
     $withdrawal = Withdrawal::find($withdrawalId);
-    
+
     if (!$withdrawal) {
         Response::error('Withdrawal not found', 404);
     }
-    
+
     // Check if already processed
     if (!$withdrawal->isPending()) {
         Response::error('Withdrawal has already been processed. Current status: ' . $withdrawal->status, 400);
     }
-    
+
     if ($action === 'approve') {
         // Check if user has sufficient balance
         $totalBalance = Goal::where('user_id', $withdrawal->user_id)->sum('current_amount');
-        
+
         if ($totalBalance < $withdrawal->amount) {
             Response::error('User has insufficient balance for this withdrawal', 400);
         }
-        
+
         // Deduct from user's goals (proportionally from each goal)
         $amountToDeduct = $withdrawal->amount;
         $goals = Goal::where('user_id', $withdrawal->user_id)
-                     ->where('current_amount', '>', 0)
-                     ->orderBy('current_amount', 'desc')
-                     ->get();
-        
+            ->where('current_amount', '>', 0)
+            ->orderBy('current_amount', 'desc')
+            ->get();
+
         foreach ($goals as $goal) {
-            if ($amountToDeduct <= 0) break;
-            
+            if ($amountToDeduct <= 0)
+                break;
+
             $deductFromThisGoal = min($goal->current_amount, $amountToDeduct);
             $goal->subtractAmount($deductFromThisGoal);
             $amountToDeduct -= $deductFromThisGoal;
         }
-        
+
         // Approve withdrawal
         $withdrawal->approve($notes ?? 'Withdrawal approved');
-        
+
         // Notification to the user who requested the withdrawal
         \App\Models\Notification::createNotification(
             $withdrawal->user_id,
@@ -76,7 +77,7 @@ try {
             'Penarikan dana sebesar Rp ' . number_format($withdrawal->amount, 0, ',', '.') . ' telah disetujui.',
             'withdrawal'
         );
-        
+
         Response::success('Withdrawal approved successfully', [
             'id' => $withdrawal->id,
             'amount' => (float) $withdrawal->amount,
@@ -85,11 +86,11 @@ try {
             'notes' => $withdrawal->notes,
             'updated_at' => $withdrawal->updated_at->toDateTimeString()
         ]);
-        
+
     } else {
         // Reject withdrawal
         $withdrawal->reject($notes ?? 'Withdrawal rejected');
-        
+
         // Notification to the user who requested the withdrawal
         \App\Models\Notification::createNotification(
             $withdrawal->user_id,
@@ -97,7 +98,7 @@ try {
             'Penarikan dana sebesar Rp ' . number_format($withdrawal->amount, 0, ',', '.') . ' ditolak. Catatan: ' . ($notes ?? '-'),
             'withdrawal'
         );
-        
+
         Response::success('Withdrawal rejected', [
             'id' => $withdrawal->id,
             'amount' => (float) $withdrawal->amount,
@@ -106,7 +107,7 @@ try {
             'updated_at' => $withdrawal->updated_at->toDateTimeString()
         ]);
     }
-    
+
 } catch (Exception $e) {
     Response::error('Failed to process withdrawal: ' . $e->getMessage(), 500);
 }

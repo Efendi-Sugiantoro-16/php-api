@@ -33,12 +33,12 @@ try {
             $table->date('deadline')->nullable();
             $table->text('description')->nullable();
             $table->timestamps();
-            
+
             $table->foreign('user_id')
-                  ->references('id')
-                  ->on('users')
-                  ->onDelete('cascade');
-            
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
+
             $table->index('user_id');
         });
         echo "✓ Table 'goals' created\n";
@@ -55,12 +55,12 @@ try {
             $table->text('description')->nullable();
             $table->timestamp('transaction_date')->useCurrent();
             $table->timestamp('created_at')->useCurrent();
-            
+
             $table->foreign('goal_id')
-                  ->references('id')
-                  ->on('goals')
-                  ->onDelete('cascade');
-            
+                ->references('id')
+                ->on('goals')
+                ->onDelete('cascade');
+
             $table->index('goal_id');
         });
         echo "✓ Table 'transactions' created\n";
@@ -76,12 +76,12 @@ try {
             $table->string('token', 255)->unique();
             $table->timestamp('expires_at');
             $table->timestamp('created_at')->useCurrent();
-            
+
             $table->foreign('user_id')
-                  ->references('id')
-                  ->on('users')
-                  ->onDelete('cascade');
-            
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
+
             $table->index('token');
             $table->index('user_id');
         });

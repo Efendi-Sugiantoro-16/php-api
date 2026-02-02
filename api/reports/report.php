@@ -22,55 +22,55 @@ try {
     // Get optional date filters
     $startDate = $_GET['start_date'] ?? date('Y-m-01'); // Default: awal bulan ini
     $endDate = $_GET['end_date'] ?? date('Y-m-d'); // Default: hari ini
-    
+
     // Get optional search filter
     $search = $_GET['search'] ?? null;
-    
+
     // Get all goals for this user
     $query = Goal::where('user_id', $userId);
-    
+
     // Apply search filter if provided
     if ($search) {
-        $query->where(function($q) use ($search) {
+        $query->where(function ($q) use ($search) {
             $q->where('name', 'like', '%' . $search . '%')
-              ->orWhere('description', 'like', '%' . $search . '%');
+                ->orWhere('description', 'like', '%' . $search . '%');
         });
     }
-    
+
     $goals = $query->get();
-    
+
     // ===== SUMMARY STATISTICS =====
     $totalGoals = $goals->count();
     $totalSaved = $goals->sum('current_amount');
     $totalTarget = $goals->sum('target_amount');
-    
-    $completedGoals = $goals->filter(function($goal) {
+
+    $completedGoals = $goals->filter(function ($goal) {
         return $goal->current_amount >= $goal->target_amount;
     });
     $completedCount = $completedGoals->count();
     $activeCount = $totalGoals - $completedCount;
-    
+
     $overallProgress = $totalTarget > 0 ? round(($totalSaved / $totalTarget) * 100, 2) : 0;
-    
+
     // Count total deposits in period
-    $totalDeposits = Transaction::whereHas('goal', function($q) use ($userId) {
-            $q->where('user_id', $userId);
-        })
+    $totalDeposits = Transaction::whereHas('goal', function ($q) use ($userId) {
+        $q->where('user_id', $userId);
+    })
         ->whereBetween('transaction_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
         ->count();
-    
+
     // Sum deposits in period
-    $periodSavings = Transaction::whereHas('goal', function($q) use ($userId) {
-            $q->where('user_id', $userId);
-        })
+    $periodSavings = Transaction::whereHas('goal', function ($q) use ($userId) {
+        $q->where('user_id', $userId);
+    })
         ->whereBetween('transaction_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
         ->sum('amount');
-    
+
     // Count withdrawals
     $totalWithdrawals = Withdrawal::where('user_id', $userId)
         ->where('status', 'approved')
         ->count();
-    
+
     // ===== GOAL DETAILS =====
     $goalDetails = [];
     foreach ($goals as $goal) {
@@ -78,10 +78,10 @@ try {
         $lastDeposit = Transaction::where('goal_id', $goal->id)
             ->orderBy('transaction_date', 'desc')
             ->first();
-        
+
         $status = $goal->current_amount >= $goal->target_amount ? 'completed' : 'active';
         $remaining = max(0, $goal->target_amount - $goal->current_amount);
-        
+
         // Calculate days remaining to deadline
         $daysRemaining = null;
         if ($goal->deadline && $status === 'active') {
@@ -90,7 +90,7 @@ try {
             $diff = $today->diff($deadline);
             $daysRemaining = $diff->invert ? -$diff->days : $diff->days;
         }
-        
+
         $goalDetails[] = [
             'id' => $goal->id,
             'name' => $goal->name,
@@ -107,17 +107,19 @@ try {
             'description' => $goal->description
         ];
     }
-    
+
     // Sort: completed first, then by progress descending
-    usort($goalDetails, function($a, $b) {
-        if ($a['status'] === 'completed' && $b['status'] !== 'completed') return -1;
-        if ($a['status'] !== 'completed' && $b['status'] === 'completed') return 1;
+    usort($goalDetails, function ($a, $b) {
+        if ($a['status'] === 'completed' && $b['status'] !== 'completed')
+            return -1;
+        if ($a['status'] !== 'completed' && $b['status'] === 'completed')
+            return 1;
         return $b['progress_percentage'] - $a['progress_percentage'];
     });
-    
+
     // ===== ACHIEVEMENTS =====
     $achievements = [];
-    
+
     // Goals completed (100%)
     foreach ($completedGoals as $goal) {
         $achievements[] = [
@@ -130,13 +132,13 @@ try {
             'date' => $goal->updated_at ? $goal->updated_at->format('Y-m-d') : null
         ];
     }
-    
+
     // Goals at 75%+
-    $almostComplete = $goals->filter(function($goal) {
+    $almostComplete = $goals->filter(function ($goal) {
         $progress = $goal->progress_percentage;
         return $progress >= 75 && $progress < 100;
     });
-    
+
     foreach ($almostComplete as $goal) {
         $achievements[] = [
             'type' => 'milestone_75',
@@ -148,13 +150,13 @@ try {
             'remaining' => (float) ($goal->target_amount - $goal->current_amount)
         ];
     }
-    
+
     // Goals at 50%+
-    $halfwayGoals = $goals->filter(function($goal) {
+    $halfwayGoals = $goals->filter(function ($goal) {
         $progress = $goal->progress_percentage;
         return $progress >= 50 && $progress < 75;
     });
-    
+
     foreach ($halfwayGoals as $goal) {
         $achievements[] = [
             'type' => 'milestone_50',
@@ -165,10 +167,10 @@ try {
             'progress' => $goal->progress_percentage
         ];
     }
-    
+
     // ===== SAVINGS TIPS (Saran Khusus) =====
     $tips = [];
-    
+
     // Tip based on progress
     if ($overallProgress < 25) {
         $tips[] = [
@@ -181,7 +183,7 @@ try {
             'tip' => 'Amazing! You are almost at your target. Keep it up!'
         ];
     }
-    
+
     // Tip for goals near deadline
     foreach ($goalDetails as $goal) {
         if ($goal['status'] === 'active' && $goal['days_remaining'] !== null) {
@@ -198,31 +200,44 @@ try {
             }
         }
     }
-    
+
     // ===== MONTHLY BREAKDOWN (for current year) =====
     $monthlyBreakdown = [];
     $currentYear = date('Y');
-    
+
     for ($month = 1; $month <= 12; $month++) {
         $monthStart = "$currentYear-" . str_pad($month, 2, '0', STR_PAD_LEFT) . "-01";
         $monthEnd = date('Y-m-t', strtotime($monthStart));
-        
-        $monthlyAmount = Transaction::whereHas('goal', function($q) use ($userId) {
-                $q->where('user_id', $userId);
-            })
+
+        $monthlyAmount = Transaction::whereHas('goal', function ($q) use ($userId) {
+            $q->where('user_id', $userId);
+        })
             ->whereBetween('transaction_date', [$monthStart . ' 00:00:00', $monthEnd . ' 23:59:59'])
             ->sum('amount');
-        
-        $monthlyCount = Transaction::whereHas('goal', function($q) use ($userId) {
-                $q->where('user_id', $userId);
-            })
+
+        $monthlyCount = Transaction::whereHas('goal', function ($q) use ($userId) {
+            $q->where('user_id', $userId);
+        })
             ->whereBetween('transaction_date', [$monthStart . ' 00:00:00', $monthEnd . ' 23:59:59'])
             ->count();
-        
-        if ($monthlyAmount > 0 || $month <= (int)date('m')) {
-            $monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June', 
-                          'July', 'August', 'September', 'October', 'November', 'December'];
-            
+
+        if ($monthlyAmount > 0 || $month <= (int) date('m')) {
+            $monthNames = [
+                '',
+                'January',
+                'February',
+                'March',
+                'April',
+                'May',
+                'June',
+                'July',
+                'August',
+                'September',
+                'October',
+                'November',
+                'December'
+            ];
+
             $monthlyBreakdown[] = [
                 'month' => $monthNames[$month],
                 'month_number' => $month,
@@ -232,14 +247,14 @@ try {
             ];
         }
     }
-    
+
     // ===== USER BADGES =====
     $userBadges = [];
-    
+
     try {
         // Get PDO connection from Capsule
         $pdo = Capsule::connection()->getPdo();
-        
+
         // Fetch user badges using PDO
         $stmt = $pdo->prepare("
             SELECT 
@@ -258,7 +273,7 @@ try {
         ");
         $stmt->execute([$userId]);
         $badges = $stmt->fetchAll(PDO::FETCH_OBJ);
-        
+
         foreach ($badges as $badge) {
             $userBadges[] = [
                 'id' => $badge->id,
@@ -275,7 +290,7 @@ try {
         // Badge system might not be set up yet, continue without errors
         error_log("Badge fetch error in report: " . $e->getMessage());
     }
-    
+
     // ===== RESPONSE =====
     $report = [
         'report_date' => date('Y-m-d H:i:s'),
@@ -296,13 +311,13 @@ try {
             'total_withdrawals' => $totalWithdrawals
         ],
         'goals' => $goalDetails,
-        'transactions' => Transaction::whereHas('goal', function($q) use ($userId) {
-                $q->where('user_id', $userId);
-            })
+        'transactions' => Transaction::whereHas('goal', function ($q) use ($userId) {
+            $q->where('user_id', $userId);
+        })
             ->whereBetween('transaction_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->orderBy('transaction_date', 'desc')
             ->get()
-            ->map(function($t) {
+            ->map(function ($t) {
                 return [
                     'id' => $t->id,
                     'goal_name' => $t->goal->name,
@@ -317,9 +332,9 @@ try {
         'monthly_breakdown' => $monthlyBreakdown,
         'badges' => $userBadges
     ];
-    
+
     Response::success('Report generated successfully', $report);
-    
+
 } catch (Exception $e) {
     Response::error('Failed to generate report: ' . $e->getMessage(), 500);
 }

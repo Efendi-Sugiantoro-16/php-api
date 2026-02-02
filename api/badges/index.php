@@ -17,17 +17,17 @@ $userId = Auth::authenticate();
 try {
     // Get all available badges
     $allBadges = Badge::orderBy('id')->get();
-    
+
     // Get user statistics
     $stats = BadgeHelper::calculateUserStats($userId);
-    
+
     // Get user's earned badges
     $userBadges = UserBadge::where('user_id', $userId)
         ->get()
         ->keyBy('badge_id');
-    
+
     // Format response with progress tracking
-    $badges = $allBadges->map(function($badge) use ($userBadges, $stats) {
+    $badges = $allBadges->map(function ($badge) use ($userBadges, $stats) {
         $earned = isset($userBadges[$badge->id]);
         return [
             'id' => $badge->id,
@@ -42,12 +42,12 @@ try {
             'earned_at' => $earned ? $userBadges[$badge->id]->earned_at : null,
         ];
     });
-    
+
     // Count stats
     $earnedCount = $userBadges->count();
     $totalCount = $allBadges->count();
     $progress = $totalCount > 0 ? round(($earnedCount / $totalCount) * 100, 1) : 0;
-    
+
     Response::success('Badges retrieved', [
         'badges' => $badges,
         'stats' => array_merge($stats, [
@@ -56,7 +56,7 @@ try {
             'progress' => $progress
         ])
     ]);
-    
+
 } catch (Exception $e) {
     Response::error($e->getMessage(), 500);
 }

@@ -16,18 +16,18 @@ $userId = Auth::authenticate();
 
 try {
     $user = User::find($userId);
-    
+
     if (!$user) {
         Response::error('User not found', 404);
     }
-    
+
     Response::success('User profile retrieved successfully', [
         'id' => $user->id,
         'name' => $user->name,
         'email' => $user->email,
         'created_at' => $user->created_at->toDateTimeString()
     ]);
-    
+
 } catch (Exception $e) {
     Response::error('Failed to retrieve user profile: ' . $e->getMessage(), 500);
 }
