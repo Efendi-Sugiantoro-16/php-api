@@ -20,7 +20,9 @@ if ($uri === '/' || $uri === '/index.php') {
                 'POST /api/auth/login' => 'Login user'
             ],
             'profile' => [
-                'GET /api/profile/user' => 'Get user profile (requires auth)'
+                'GET /api/profile/user' => 'Get user profile (requires auth)',
+                'POST /api/profile/update' => 'Update profile info (requires auth)',
+                'POST /api/profile/update-password' => 'Update password (requires auth)'
             ],
             'dashboard' => [
                 'GET /api/dashboard/summary' => 'Get dashboard summary (requires auth)'
@@ -71,10 +73,10 @@ if (file_exists($filePath)) {
     // 404 Not Found
     require_once __DIR__ . '/bootstrap.php';
     require_once __DIR__ . '/config/cors.php';
-    
+
     // Check if it's an options request (CORS) - handled in cors.php but we need to trigger it
     // Actually config/cors.php handles EXIT if OPTIONS.
-    
+
     // Return JSON 404
     http_response_code(404);
     echo json_encode(['success' => false, 'message' => 'Endpoint not found: ' . $uri]);
