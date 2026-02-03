@@ -80,20 +80,6 @@ try {
         $user->subtractAvailableBalance($amount);
     }
 
-    // Create Notification
-    try {
-        if ($transaction) {
-            \App\Models\Notification::createNotification(
-                $userId,
-                'Deposit Successful',
-                'A deposit of Rp ' . number_format($amount, 0, ',', '.') . ' has been successfully added via ' . ucfirst($method) . '.',
-                'deposit'
-            );
-        }
-    } catch (\Exception $e) {
-        // Ignore notification errors
-    }
-
     // Update goal amount and get overflow info
     $result = $goal->addAmount($amount);
 
@@ -104,20 +90,30 @@ try {
     }
 
     // Update notification message if goal completed
-    $notificationMessage = 'A deposit of Rp ' . number_format($amount, 0, ',', '.') . ' has been successfully added via ' . ucfirst($method) . '.';
+    // Translate to Indonesian
+    $methodName = ucfirst($method);
+    if ($method === 'balance')
+        $methodName = 'Saldo Akun';
+    if ($method === 'manual')
+        $methodName = 'Manual Cash';
+
+    $notificationTitle = 'Tabungan Berhasil';
+    $notificationMessage = 'Setoran sebesar Rp ' . number_format($amount, 0, ',', '.') . ' telah berhasil ditambahkan melalui ' . $methodName . '.';
+
     if ($result['completed']) {
-        $notificationMessage = 'Congratulations! The goal "' . $goal->name . '" has been reached! A deposit of Rp ' . number_format($result['deposited_amount'], 0, ',', '.') . ' was added.';
+        $notificationTitle = 'Target Tercapai! 🎉';
+        $notificationMessage = 'Selamat! Target "' . $goal->name . '" telah tercapai! Setoran sebesar Rp ' . number_format($result['deposited_amount'], 0, ',', '.') . ' berhasil ditambahkan.';
         if ($result['overflow_amount'] > 0) {
-            $notificationMessage .= ' You have a remaining balance of Rp ' . number_format($result['overflow_amount'], 0, ',', '.') . ' to be allocated.';
+            $notificationMessage .= ' Sisa kelebihan dana sebesar Rp ' . number_format($result['overflow_amount'], 0, ',', '.') . ' telah dialokasikan ke Saldo Akun.';
         }
     }
 
-    // Create Notification
+    // Create Notification (Only one call)
     try {
         if ($transaction) {
             \App\Models\Notification::createNotification(
                 $userId,
-                $result['completed'] ? 'Goal Reached!' : 'Deposit Successful',
+                $notificationTitle,
                 $notificationMessage,
                 'deposit'
             );

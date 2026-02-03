@@ -107,8 +107,8 @@ try {
         try {
             \App\Models\Notification::createNotification(
                 $userId,
-                $result['completed'] ? 'Goal Reached!' : 'Allocation Successful',
-                'An allocation of Rp ' . number_format($amount, 0, ',', '.') . ' to goal "' . $goal->name . '" was successful.',
+                $result['completed'] ? 'Target Tercapai! 🎉' : 'Alokasi Berhasil',
+                'Alokasi dana sebesar Rp ' . number_format($amount, 0, ',', '.') . ' ke target "' . $goal->name . '" telah berhasil.',
                 'deposit'
             );
         } catch (\Exception $e) {

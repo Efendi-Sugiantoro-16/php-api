@@ -63,7 +63,7 @@ try {
         // Validate sufficient balance in THIS SPECIFIC GOAL
         if ($goal->current_amount < $amount) {
             Response::error(
-                'Insufficient balance in "' . $goal->name . '". Available: Rp ' . number_format($goal->current_amount, 0, ',', '.'),
+                'Insufficient balance in "' . $goal->name . '". Available: Rp ' . number_format((float) $goal->current_amount, 0, ',', '.'),
                 400
             );
         }
@@ -101,6 +101,19 @@ try {
         'status' => Withdrawal::STATUS_PENDING,
         'notes' => $notes
     ]);
+
+    // Create Notification
+    try {
+        $goalName = $goalId ? $goal->name : 'Saldo Akun';
+        \App\Models\Notification::createNotification(
+            $userId,
+            'Permintaan Penarikan',
+            'Permintaan penarikan sebesar Rp ' . number_format($amount, 0, ',', '.') . ' dari ' . $goalName . ' sedang diproses.',
+            'withdrawal'
+        );
+    } catch (\Exception $e) {
+        error_log("Notification Create Error: " . $e->getMessage());
+    }
 
     Response::success('Withdrawal request submitted successfully', [
         'id' => $withdrawal->id,
