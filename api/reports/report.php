@@ -125,8 +125,8 @@ try {
         $achievements[] = [
             'type' => 'goal_completed',
             'icon' => '🏆',
-            'title' => 'Goal Reached!',
-            'description' => "Congratulations! The goal \"{$goal->name}\" has reached 100%",
+            'title' => 'Goal Tercapai!',
+            'description' => "Selamat! Goal \"{$goal->name}\" telah mencapai 100%",
             'goal_name' => $goal->name,
             'amount' => (float) $goal->target_amount,
             'date' => $goal->updated_at ? $goal->updated_at->format('Y-m-d') : null
@@ -143,8 +143,8 @@ try {
         $achievements[] = [
             'type' => 'milestone_75',
             'icon' => '🎯',
-            'title' => 'Almost There!',
-            'description' => "The goal \"{$goal->name}\" is already {$goal->progress_percentage}%",
+            'title' => 'Hampir Selesai!',
+            'description' => "Goal \"{$goal->name}\" sudah mencapai {$goal->progress_percentage}%",
             'goal_name' => $goal->name,
             'progress' => $goal->progress_percentage,
             'remaining' => (float) ($goal->target_amount - $goal->current_amount)
@@ -161,8 +161,8 @@ try {
         $achievements[] = [
             'type' => 'milestone_50',
             'icon' => '⭐',
-            'title' => 'Halfway There',
-            'description' => "The goal \"{$goal->name}\" has reached {$goal->progress_percentage}%",
+            'title' => 'Setengah Jalan',
+            'description' => "Goal \"{$goal->name}\" telah mencapai {$goal->progress_percentage}%",
             'goal_name' => $goal->name,
             'progress' => $goal->progress_percentage
         ];
@@ -175,12 +175,12 @@ try {
     if ($overallProgress < 25) {
         $tips[] = [
             'icon' => '💡',
-            'tip' => 'Start saving bit by bit consistently. Consistency is key!'
+            'tip' => 'Mulai menabung sedikit demi sedikit secara rutin. Konsistensi adalah kunci!'
         ];
     } else if ($overallProgress >= 75) {
         $tips[] = [
             'icon' => '🚀',
-            'tip' => 'Amazing! You are almost at your target. Keep it up!'
+            'tip' => 'Luar biasa! Kamu sudah hampir mencapai target. Pertahankan semangatmu!'
         ];
     }
 
@@ -190,12 +190,12 @@ try {
             if ($goal['days_remaining'] <= 7 && $goal['days_remaining'] > 0) {
                 $tips[] = [
                     'icon' => '⏰',
-                    'tip' => "Goal \"{$goal['name']}\" deadline in {$goal['days_remaining']} days. Remaining: Rp " . number_format($goal['remaining_amount'], 0, ',', '.')
+                    'tip' => "Deadline goal \"{$goal['name']}\" tinggal {$goal['days_remaining']} hari lagi. Sisa: Rp " . number_format($goal['remaining_amount'], 0, ',', '.')
                 ];
             } else if ($goal['days_remaining'] < 0) {
                 $tips[] = [
                     'icon' => '⚠️',
-                    'tip' => "Goal \"{$goal['name']}\" has passed its deadline. Consider updating the deadline or increasing deposits."
+                    'tip' => "Goal \"{$goal['name']}\" telah melewati deadline. Pertimbangkan untuk memperbarui deadline atau menambah setoran."
                 ];
             }
         }
@@ -224,18 +224,18 @@ try {
         if ($monthlyAmount > 0 || $month <= (int) date('m')) {
             $monthNames = [
                 '',
-                'January',
-                'February',
-                'March',
+                'Januari',
+                'Februari',
+                'Maret',
                 'April',
-                'May',
-                'June',
-                'July',
-                'August',
+                'Mei',
+                'Juni',
+                'Juli',
+                'Agustus',
                 'September',
-                'October',
+                'Oktober',
                 'November',
-                'December'
+                'Desember'
             ];
 
             $monthlyBreakdown[] = [
@@ -294,7 +294,7 @@ try {
     // ===== RESPONSE =====
     $report = [
         'report_date' => date('Y-m-d H:i:s'),
-        'report_title' => 'GoalMoney Savings Progress Report',
+        'report_title' => 'Laporan Progres Tabungan GoalMoney',
         'period' => [
             'start' => $startDate,
             'end' => $endDate
