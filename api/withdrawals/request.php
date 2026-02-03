@@ -102,19 +102,6 @@ try {
         'notes' => $notes
     ]);
 
-    // Create Notification
-    try {
-        $goalName = $goalId ? $goal->name : 'Saldo Akun';
-        \App\Models\Notification::createNotification(
-            $userId,
-            'Permintaan Penarikan',
-            'Permintaan penarikan sebesar Rp ' . number_format($amount, 0, ',', '.') . ' dari ' . $goalName . ' sedang diproses.',
-            'withdrawal'
-        );
-    } catch (\Exception $e) {
-        error_log("Notification Create Error: " . $e->getMessage());
-    }
-
     Response::success('Withdrawal request submitted successfully', [
         'id' => $withdrawal->id,
         'goal_id' => $withdrawal->goal_id,
